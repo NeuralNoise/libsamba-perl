@@ -1,0 +1,6 @@
+Revision history for Perl extension Samba::Smb.
+
+0.01  Wed Jul 24 10:59:58 2013
+	- original version; created by h2xs 1.23 with options
+		-A -n Samba::Smb
+

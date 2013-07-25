@@ -1,0 +1,8 @@
+Changes
+Makefile.PL
+MANIFEST
+ppport.h
+README
+Smb.xs
+t/Samba-Smb.t
+lib/Samba/Smb.pm
