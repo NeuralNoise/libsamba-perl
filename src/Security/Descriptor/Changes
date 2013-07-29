@@ -1,0 +1,6 @@
+Revision history for Perl extension Samba::Security::Descriptor.
+
+0.01  Fri Jul 26 00:56:23 2013
+	- original version; created by h2xs 1.23 with options
+		-A -n Samba::Security::Descriptor
+

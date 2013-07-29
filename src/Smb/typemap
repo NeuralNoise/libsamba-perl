@@ -1,3 +1,4 @@
 LoadParm *      T_PTROBJ
 Credentials *   T_PTROBJ
 Smb *           T_PTROBJ
+Descriptor *    T_PTROBJ

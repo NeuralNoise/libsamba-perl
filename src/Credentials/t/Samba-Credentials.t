@@ -15,6 +15,3 @@ BEGIN { use_ok('Samba::Credentials') };
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-use Data::Dumper;
-my $credentials = new Samba::Credentials('foo', 'bar');
-print Dumper $credentials;
