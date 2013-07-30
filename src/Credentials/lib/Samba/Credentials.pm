@@ -3,8 +3,10 @@ package Samba::Credentials;
 use 5.014002;
 use strict;
 use warnings;
+use Carp;
 
 require Exporter;
+use AutoLoader;
 
 our @ISA = qw(Exporter);
 
@@ -16,85 +18,125 @@ our @ISA = qw(Exporter);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = ( 'all' => [ qw(
-
+	CRED_AUTO_KRB_FORWARDABLE
+	CRED_FORCE_KRB_FORWARDABLE
+	CRED_NO_KRB_FORWARDABLE
+	CRED_AUTO_USE_KERBEROS
+	CRED_DONT_USE_KERBEROS
+	CRED_MUST_USE_KERBEROS
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw(
-
+	CRED_AUTO_KRB_FORWARDABLE
+	CRED_FORCE_KRB_FORWARDABLE
+	CRED_NO_KRB_FORWARDABLE
+	CRED_AUTO_USE_KERBEROS
+	CRED_DONT_USE_KERBEROS
+	CRED_MUST_USE_KERBEROS
 );
 
 our $VERSION = '0.01';
+
+sub AUTOLOAD {
+    # This AUTOLOAD is used to 'autoload' constants from the constant()
+    # XS function.
+
+    my $constname;
+    our $AUTOLOAD;
+    ($constname = $AUTOLOAD) =~ s/.*:://;
+    croak "&Samba::Credentials::constant not defined" if $constname eq 'constant';
+    my ($error, $val) = constant($constname);
+    if ($error) { croak $error; }
+    {
+	no strict 'refs';
+	# Fixed between 5.005_53 and 5.005_61
+#XXX	if ($] >= 5.00561) {
+#XXX	    *$AUTOLOAD = sub () { $val };
+#XXX	}
+#XXX	else {
+	    *$AUTOLOAD = sub { $val };
+#XXX	}
+    }
+    goto &$AUTOLOAD;
+}
 
 require XSLoader;
 XSLoader::load('Samba::Credentials', $VERSION);
 
 # Preloaded methods go here.
 
-sub new
-{
-  my ($class, %params) = @_;
-
-  my $self = {};
-  bless ($self, $class);
-
-  my $username = $params{username};
-  my $password = $params{password};
-  $self->{context} = _credentials_new($username, $password);
-
-  return $self;
-}
+# Autoload methods go after =cut, and are processed by the autosplit program.
 
 1;
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 
-Samba::Credentials - Perl extension for blah blah blah
+Samba::Credentials - Extension for Samba credentials management
 
 =head1 SYNOPSIS
 
   use Samba::Credentials;
-  blah blah blah
+  use Samba::LoadParm;
+
+  my $lp = new Samba::LoadParm();
+  $lp->load_default();
+
+  my $creds = new Samba::Credentials($lp);
+  $creds->username("foo");
+  $creds->password("bar");
+  $creds->guess();
 
 =head1 DESCRIPTION
 
-Stub documentation for Samba::Credentials, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+  This module uses an object interface
 
-Blah blah blah.
+=over
+
+=back
 
 =head2 EXPORT
 
 None by default.
 
+=head2 Exportable constants
+
+  CRED_AUTO_KRB_FORWARDABLE
+  CRED_AUTO_USE_KERBEROS
+  CRED_DONT_USE_KERBEROS
+  CRED_FORCE_KRB_FORWARDABLE
+  CRED_MUST_USE_KERBEROS
+  CRED_NO_KRB_FORWARDABLE
+
 
 
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
+  Samba::LoadParm
 
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
 
 =head1 AUTHOR
 
-zen, E<lt>zen@E<gt>
+Samuel Cabrero, E<lt>scabrero@zentyal.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by zen
+Copyright (C) 2013 by Zentyal S.L.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.14.2 or,
-at your option, any later version of Perl 5 you may have available.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License, version 2, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 =cut
