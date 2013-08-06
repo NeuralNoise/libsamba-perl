@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <util/time.h>
 #include <util/data_blob.h>
+#include <util/memory.h>
 #include <core/ntstatus.h>
 #include <smb_cliraw.h>
 #include <gen_ndr/security.h>
@@ -19,7 +20,6 @@
 
 MODULE = Samba::Smb     PACKAGE = Samba::Smb
 PROTOTYPES: ENABLE
-
 
 Smb *
 new(class, lp, creds, hostname, service)
@@ -30,7 +30,7 @@ new(class, lp, creds, hostname, service)
     char *service
 CODE:
     TALLOC_CTX *mem_ctx = NULL;
-    Smb *ctx = NULL;
+    Smb *self = NULL;
     bool ret;
     NTSTATUS status;
     const char *classname;
@@ -50,33 +50,21 @@ CODE:
         XSRETURN_UNDEF;
     }
 
-    ctx = talloc_zero(mem_ctx, Smb);
-    if (ctx == NULL) {
+    self = talloc_zero(mem_ctx, Smb);
+    if (self == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating private_data", __func__);
         XSRETURN_UNDEF;
     }
+    self->mem_ctx = mem_ctx;
 
-    ctx->mem_ctx = mem_ctx;
-
-    //cli_credentials_set_password(spdata->creds, "Zentyal1234", CRED_SPECIFIED);
-    //cli_credentials_set_username(spdata->creds, "administrator", CRED_SPECIFIED);
-    //cli_credentials_set_domain(spdata->creds, "KERNEVIL", CRED_SPECIFIED);
-    //cli_credentials_set_kerberos_state(spdata->creds, CRED_AUTO_USE_KERBEROS);
-    //cli_credentials_set_workstation(spdata->creds, "zentyal311", CRED_SPECIFIED);
-    //cli_credentials_set_conf(spdata->creds, spdata->lp_ctx);
-    //cli_credentials_set_realm(spdata->creds, "KERNEVIL.LAN", CRED_SPECIFIED);
-    //cli_credentials_set_secure_channel_type(spdata->creds, SEC_CHAN_WKSTA);
-
-    //cli_credentials_guess(spdata->creds, spdata->lp_ctx);
-
-    ctx->ev_ctx = tevent_context_init(mem_ctx);
-    if (ctx->ev_ctx == NULL) {
+    self->ev_ctx = tevent_context_init(mem_ctx);
+    if (self->ev_ctx == NULL) {
         talloc_free(mem_ctx);
         croak("No memory allocating ev_ctx");
         XSRETURN_UNDEF;
     }
-    tevent_loop_allow_nesting(ctx->ev_ctx);
+    tevent_loop_allow_nesting(self->ev_ctx);
 
     gensec_init();
 
@@ -97,7 +85,7 @@ CODE:
                 lpcfg_socket_options(lp->lp_ctx),
                 creds->ccreds,
                 lpcfg_resolve_context(lp->lp_ctx),
-                ctx->ev_ctx,
+                self->ev_ctx,
                 &options,
                 &session_options,
                 lpcfg_gensec_settings(mem_ctx, lp->lp_ctx));
@@ -106,9 +94,9 @@ CODE:
         croak(nt_errstr(status));
         XSRETURN_UNDEF;
     }
-    ctx->tree = tree;
+    self->tree = tree;
 
-    RETVAL = ctx;
+    RETVAL = self;
 OUTPUT:
     RETVAL
 
@@ -158,29 +146,77 @@ CODE:
     if (!NT_STATUS_IS_OK(status)) {
         croak("Failed to close: %s", nt_errstr(status));
     }
+    RETVAL = 1;
 OUTPUT:
     RETVAL
 
 int
-smbPtr_set_sd(self, fd, flags, sd)
+smbPtr_set_sd(self, filename, sd, flags = NO_INIT)
     Smb *self
-    int fd
-    int flags
+    char *filename
     Descriptor *sd
+    int flags
 CODE:
     NTSTATUS status;
-    union smb_setfileinfo fi;
+    union smb_open io_open;
+    union smb_close io_close;
+    union smb_setfileinfo io_finfo;
+    int fnum;
 
-    fi.generic.level = RAW_FILEINFO_SEC_DESC;
-    fi.set_secdesc.in.file.fnum = fd;
-    fi.set_secdesc.in.secinfo_flags = flags;
-    fi.set_secdesc.in.sd = sd->sd;
+    /* Open file */
+    ZERO_STRUCT(io_open);
+    io_open.generic.level = RAW_OPEN_NTCREATEX;
+    io_open.ntcreatex.in.root_fid.fnum = 0;
+    io_open.ntcreatex.in.flags = 0;
+    io_open.ntcreatex.in.access_mask = SEC_FLAG_MAXIMUM_ALLOWED;
+    io_open.ntcreatex.in.create_options = 0;
+    io_open.ntcreatex.in.file_attr = FILE_ATTRIBUTE_NORMAL;
+    io_open.ntcreatex.in.share_access = NTCREATEX_SHARE_ACCESS_READ |
+                                        NTCREATEX_SHARE_ACCESS_WRITE;
+    io_open.ntcreatex.in.alloc_size = 0;
+    io_open.ntcreatex.in.open_disposition = NTCREATEX_DISP_OPEN;
+    io_open.ntcreatex.in.impersonation = NTCREATEX_IMPERSONATION_ANONYMOUS;
+    io_open.ntcreatex.in.security_flags = 0;
+    io_open.ntcreatex.in.fname = filename;
 
-    status = smb_raw_setfileinfo(self->tree, &fi);
+    status = smb_raw_open(self->tree, self->mem_ctx, &io_open);
     if (!NT_STATUS_IS_OK(status)) {
-        croak(nt_errstr(status));
+        croak("Failed to open: %s", nt_errstr(status));
+    }
+    fnum = io_open.ntcreatex.out.file.fnum;
+
+    /* Set security descriptor */
+    ZERO_STRUCT(io_finfo);
+    io_finfo.set_secdesc.level = RAW_SFILEINFO_SEC_DESC;
+    io_finfo.set_secdesc.in.file.fnum = fnum;
+    io_finfo.set_secdesc.in.sd = sd->sd;
+    if (flags) {
+        io_finfo.set_secdesc.in.secinfo_flags = flags;
+    } else {
+        io_finfo.set_secdesc.in.secinfo_flags = SECINFO_OWNER |
+                                           SECINFO_GROUP |
+                                           SECINFO_DACL |
+                                           SECINFO_PROTECTED_DACL |
+                                           SECINFO_UNPROTECTED_DACL |
+                                           SECINFO_SACL |
+                                           SECINFO_PROTECTED_SACL |
+                                           SECINFO_UNPROTECTED_SACL;
+    }
+    status = smb_raw_set_secdesc(self->tree, &io_finfo);
+    if (!NT_STATUS_IS_OK(status)) {
+        croak("Failed to set security descriptor: %s", nt_errstr(status));
     }
 
-    RETVAL = 0;
+    /* Close file */
+    ZERO_STRUCT(io_close);
+    io_close.close.level = RAW_CLOSE_CLOSE;
+    io_close.close.in.file.fnum = fnum;
+    io_close.close.in.write_time = 0;
+    status = smb_raw_close(self->tree, &io_close);
+    if (!NT_STATUS_IS_OK(status)) {
+        croak("Failed to close: %s", nt_errstr(status));
+    }
+
+    RETVAL = 1;
 OUTPUT:
     RETVAL
