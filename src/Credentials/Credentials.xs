@@ -152,7 +152,7 @@ credsPtr_anonymous(self, value)
     if (items > 1) {
         cli_credentials_set_anonymous(self->ccreds);
     }
-    RETVAL = cli_credentials_get_anonymous(self->ccreds);
+    RETVAL = cli_credentials_is_anonymous(self->ccreds);
     OUTPUT:
     RETVAL
 
@@ -198,14 +198,14 @@ credsPtr_kerberos_state(self, value)
     RETVAL
 
 int
-credsPtr_kerberos_forwadable(self, value)
+credsPtr_kerberos_forwardable(self, value)
     Credentials *self
     int value = NO_INIT
     CODE:
     if (items > 1) {
-        cli_credentials_set_krb_forwadable(self->ccreds, value);
+        cli_credentials_set_krb_forwardable(self->ccreds, value);
     }
-    RETVAL = cli_credentials_get_krb_forwadable(self->ccreds);
+    RETVAL = cli_credentials_get_krb_forwardable(self->ccreds);
     OUTPUT:
     RETVAL
 
