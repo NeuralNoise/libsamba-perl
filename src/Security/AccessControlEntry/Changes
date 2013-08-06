@@ -1,0 +1,6 @@
+Revision history for Perl extension Samba::Security::AccessControlEntry.
+
+0.01  Tue Aug  6 16:17:38 2013
+	- original version; created by h2xs 1.23 with options
+		-A -n Samba::Security::AccessControlEntry
+

@@ -10,7 +10,7 @@ WriteMakefile(
     ABSTRACT_FROM     => 'lib/Samba/Security/Descriptor.pm',
     AUTHOR            => 'Samuel Cabrero <scabrero@zentyal.com>',
     PREREQ_PM         => {},
-    LIBS              => ["-L$samba_prefix/lib -ltalloc -lsamba-hostconfig"],
+    LIBS              => ["-L$samba_prefix/lib -ltalloc -lsamba-security"],
     DEFINE            => '',
     INC               => "-I../../../include -I. -I$samba_prefix/include",
     OBJECT            => 'Descriptor.o',

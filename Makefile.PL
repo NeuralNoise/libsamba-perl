@@ -11,5 +11,9 @@ GetOptions('samba-prefix=s' => \$samba_prefix);
 
 WriteMakefile(
     NAME => 'Samba',
-    DIR => ['src/LoadParm', 'src/Credentials', 'src/Smb', 'src/Security/Descriptor'],
+    DIR => ['src/LoadParm',
+            'src/Credentials',
+            'src/Smb',
+            'src/Security/Descriptor',
+            'src/Security/AccessControlEntry'],
 );
