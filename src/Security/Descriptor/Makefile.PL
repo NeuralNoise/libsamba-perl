@@ -141,8 +141,7 @@ if  (eval {require ExtUtils::Constant; 1}) {
                                      C_FILE       => 'const-c.inc',
                                      XS_FILE      => 'const-xs.inc',
                                   );
-}
-else {
+} else {
   use File::Copy;
   use File::Spec;
   foreach my $file ('const-c.inc', 'const-xs.inc') {

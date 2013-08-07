@@ -34,9 +34,13 @@
 #include <smb_cliraw.h>
 #include <gen_ndr/security.h>
 
+#include "const-c.inc"
+
 
 MODULE = Samba::Smb     PACKAGE = Samba::Smb
 PROTOTYPES: ENABLE
+
+INCLUDE: const-xs.inc
 
 Smb *
 new(class, lp, creds, hostname, service)
@@ -83,7 +87,12 @@ CODE:
     }
     tevent_loop_allow_nesting(self->ev_ctx);
 
-    gensec_init();
+    status = gensec_init();
+    if (NT_STATUS_IS_ERR(status)) {
+        talloc_free(mem_ctx);
+        croak("Failed to initalise gensec: %s", nt_errstr(status));
+        XSRETURN_UNDEF;
+    }
 
     struct smbcli_options options;
     struct smbcli_session_options session_options;
@@ -120,51 +129,77 @@ OUTPUT:
 MODULE = Samba::Smb     PACKAGE = SmbPtr    PREFIX = smbPtr_
 
 int
-smbPtr_open(self, file)
+smbPtr_open(self, fname, flags, share_mode)
     Smb *self
-    char *file
+    const char *fname
+    int flags
+    int share_mode
 CODE:
-    NTSTATUS status;
-    union smb_open io;
+    int fnum;
 
-    io.generic.level = RAW_OPEN_NTCREATEX;
-    io.ntcreatex.in.root_fid.fnum = 0;
-    io.ntcreatex.in.flags = 0;
-    io.ntcreatex.in.access_mask = SEC_FLAG_MAXIMUM_ALLOWED;
-    io.ntcreatex.in.create_options = 0;
-    io.ntcreatex.in.file_attr = FILE_ATTRIBUTE_NORMAL;
-    io.ntcreatex.in.share_access = NTCREATEX_SHARE_ACCESS_READ |
-                                   NTCREATEX_SHARE_ACCESS_WRITE;
-    io.ntcreatex.in.alloc_size = 0;
-    io.ntcreatex.in.open_disposition = NTCREATEX_DISP_OPEN;
-    io.ntcreatex.in.impersonation = NTCREATEX_IMPERSONATION_ANONYMOUS;
-    io.ntcreatex.in.security_flags = 0;
-    io.ntcreatex.in.fname = file;
-    status = smb_raw_open(self->tree, self->mem_ctx, &io);
-    if (!NT_STATUS_IS_OK(status)) {
-        croak("Failed to open: %s", nt_errstr(status));
+    fnum = smbcli_open(self->tree, fname, flags, share_mode);
+    if (fnum == -1) {
+        croak("Failed to open %s: %s", fname, smbcli_errstr(self->tree));
     }
-    RETVAL = io.ntcreatex.out.file.fnum;
+    RETVAL = fnum;
 OUTPUT:
     RETVAL
 
 int
-smbPtr_close(self, fd)
+smbPtr_close(self, fnum)
     Smb *self
-    int fd
+    int fnum
 CODE:
     NTSTATUS status;
-    union smb_close io;
-
-    io.close.level = RAW_CLOSE_CLOSE;
-    io.close.in.file.fnum = fd;
-    io.close.in.write_time = 0;
-    status = smb_raw_close(self->tree, &io);
-    if (!NT_STATUS_IS_OK(status)) {
-        croak("Failed to close: %s", nt_errstr(status));
+    status = smbcli_close(self->tree, fnum);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to close: %s (%s)", nt_errstr(status),
+            smbcli_errstr(self->tree));
     }
     RETVAL = 1;
 OUTPUT:
+    RETVAL
+
+int
+smbPtr_mkdir(self, dname)
+    Smb *self
+    const char *dname
+    CODE:
+    NTSTATUS status;
+
+    status = smbcli_mkdir(self->tree, dname);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to mkdir %s: %s (%s)", dname, nt_errstr(status),
+            smbcli_errstr(self->tree));
+    }
+    RETVAL = 1;
+    OUTPUT:
+    RETVAL
+
+int
+smbPtr_rmdir(self, dname)
+    Smb *self
+    const char *dname
+    CODE:
+    NTSTATUS status;
+
+    status = smbcli_rmdir(self->tree, dname);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to rmdir %d: %s (%s)", dname, nt_errstr(status),
+            smbcli_errstr(self->tree));
+    }
+    RETVAL = 1;
+    OUTPUT:
+    RETVAL
+
+ssize_t smbPtr_write(self, fnum, data, length)
+    Smb *self
+    int fnum
+    const char *data
+    size_t length
+    CODE:
+    RETVAL = smbcli_write(self->tree, fnum, 0, data, 0, length);
+    OUTPUT:
     RETVAL
 
 int

@@ -3,14 +3,38 @@
 
 #########################
 
-# change 'tests => 1' to 'tests => last_test_to_print';
+# change 'tests => 2' to 'tests => last_test_to_print';
 
 use strict;
 use warnings;
 
-use Test::More tests => 1;
+use Test::More tests => 2;
 BEGIN { use_ok('Samba::Smb') };
 
+
+my $fail = 0;
+foreach my $constname (qw(
+	DENY_DOS
+    DENY_ALL
+    DENY_WRITE
+    DENY_READ
+    DENY_NONE
+    DENY_FCB
+    DOS_OPEN_RDONLY
+    DOS_OPEN_WRONLY
+    DOS_OPEN_RDWR
+    DOS_OPEN_FCB)) {
+  next if (eval "my \$a = $constname; 1");
+  if ($@ =~ /^Your vendor has not defined Samba::Smb macro $constname/) {
+    print "# pass: $@";
+  } else {
+    print "# fail: $@";
+    $fail = 1;
+  }
+
+}
+
+ok( $fail == 0 , 'Constants' );
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
