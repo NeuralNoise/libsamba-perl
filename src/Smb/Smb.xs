@@ -36,6 +36,8 @@
 
 #include "const-c.inc"
 
+struct resolve_context;
+struct resolve_context *lpcfg_resolve_context(struct loadparm_context *lp_ctx);
 
 MODULE = Samba::Smb     PACKAGE = Samba::Smb
 PROTOTYPES: ENABLE
@@ -52,7 +54,6 @@ new(class, lp, creds, hostname, service)
 CODE:
     TALLOC_CTX *mem_ctx = NULL;
     Smb *self = NULL;
-    bool ret;
     NTSTATUS status;
     const char *classname;
 
@@ -68,14 +69,12 @@ CODE:
     mem_ctx = talloc_named(NULL, 0, "Samba::Smb");
     if (mem_ctx == NULL) {
         croak("%s: No memory allocating talloc context", __func__);
-        XSRETURN_UNDEF;
     }
 
     self = talloc_zero(mem_ctx, Smb);
     if (self == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating private_data", __func__);
-        XSRETURN_UNDEF;
     }
     self->mem_ctx = mem_ctx;
 
@@ -83,7 +82,6 @@ CODE:
     if (self->ev_ctx == NULL) {
         talloc_free(mem_ctx);
         croak("No memory allocating ev_ctx");
-        XSRETURN_UNDEF;
     }
     tevent_loop_allow_nesting(self->ev_ctx);
 
@@ -91,7 +89,6 @@ CODE:
     if (NT_STATUS_IS_ERR(status)) {
         talloc_free(mem_ctx);
         croak("Failed to initalise gensec: %s", nt_errstr(status));
-        XSRETURN_UNDEF;
     }
 
     struct smbcli_options options;
@@ -100,10 +97,9 @@ CODE:
     lpcfg_smbcli_options(lp->lp_ctx, &options);
     lpcfg_smbcli_session_options(lp->lp_ctx, &session_options);
 
-    struct smbcli_tree *tree;
     status = smbcli_tree_full_connection(
                 mem_ctx,
-                &tree,
+                &self->tree,
                 hostname,
                 lpcfg_smb_ports(lp->lp_ctx),
                 service,
@@ -118,9 +114,7 @@ CODE:
     if (!NT_STATUS_IS_OK(status)) {
         talloc_free(mem_ctx);
         croak(nt_errstr(status));
-        XSRETURN_UNDEF;
     }
-    self->tree = tree;
 
     RETVAL = self;
 OUTPUT:
