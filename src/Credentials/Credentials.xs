@@ -70,7 +70,6 @@ CODE:
         croak("%s: No memory allocating credentials", __func__);
         XSRETURN_UNDEF;
     }
-    cli_credentials_guess(self->ccreds, self->lp->lp_ctx);
 
     RETVAL = self;
 OUTPUT:
