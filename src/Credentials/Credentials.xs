@@ -80,9 +80,9 @@ MODULE = Samba::Credentials PACKAGE = CredentialsPtr PREFIX = credsPtr_
 PROTOTYPES: ENABLE
 
 const char *
-credsPtr_username(self, value)
+credsPtr_username(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     if (items > 1) {
         if (!cli_credentials_set_username(self->ccreds, value, CRED_SPECIFIED))
@@ -93,9 +93,9 @@ credsPtr_username(self, value)
     RETVAL
 
 const char *
-credsPtr_password(self, value)
+credsPtr_password(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     if (items > 1) {
         if (!cli_credentials_set_password(self->ccreds, value, CRED_SPECIFIED))
@@ -106,9 +106,9 @@ credsPtr_password(self, value)
     RETVAL
 
 const char *
-credsPtr_domain(self, value)
+credsPtr_domain(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     if (items > 1) {
         if (!cli_credentials_set_domain(self->ccreds, value, CRED_SPECIFIED))
@@ -119,9 +119,9 @@ credsPtr_domain(self, value)
     RETVAL
 
 const char *
-credsPtr_realm(self, value)
+credsPtr_realm(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     if (items > 1) {
         if (!cli_credentials_set_realm(self->ccreds, value, CRED_SPECIFIED))
@@ -132,9 +132,9 @@ credsPtr_realm(self, value)
     RETVAL
 
 const char *
-credsPtr_bind_dn(self, value)
+credsPtr_bind_dn(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     if (items > 1) {
         if (!cli_credentials_set_bind_dn(self->ccreds, value))
@@ -145,9 +145,9 @@ credsPtr_bind_dn(self, value)
     RETVAL
 
 bool
-credsPtr_anonymous(self, value)
+credsPtr_anonymous(self, value = NO_INIT)
     Credentials *self
-    bool value = NO_INIT
+    bool value
     CODE:
     if (items > 1) {
         cli_credentials_set_anonymous(self->ccreds);
@@ -157,9 +157,9 @@ credsPtr_anonymous(self, value)
     RETVAL
 
 const char *
-credsPtr_workstation(self, value)
+credsPtr_workstation(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     if (items > 1) {
         if (!cli_credentials_set_workstation(self->ccreds, value, CRED_SPECIFIED))
@@ -186,9 +186,9 @@ credsPtr_wrong_password(self)
     RETVAL
 
 int
-credsPtr_kerberos_state(self, value)
+credsPtr_kerberos_state(self, value = NO_INIT)
     Credentials *self
-    int value = NO_INIT
+    int value
     CODE:
     if (items > 1) {
         cli_credentials_set_kerberos_state(self->ccreds, value);
@@ -198,9 +198,9 @@ credsPtr_kerberos_state(self, value)
     RETVAL
 
 int
-credsPtr_kerberos_forwardable(self, value)
+credsPtr_kerberos_forwardable(self, value = NO_INIT)
     Credentials *self
-    int value = NO_INIT
+    int value
     CODE:
     if (items > 1) {
         cli_credentials_set_krb_forwardable(self->ccreds, value);
@@ -265,9 +265,9 @@ credsPtr_set_target_service(self, value)
     cli_credentials_set_target_service(self->ccreds, value);
 
 unsigned int
-credsPtr_gensec_features(self, value)
+credsPtr_gensec_features(self, value = NO_INIT)
     Credentials *self
-    unsigned int value = NO_INIT
+    unsigned int value
     CODE:
     if (items > 1) {
         cli_credentials_set_gensec_features(self->ccreds, value);
@@ -277,9 +277,9 @@ credsPtr_gensec_features(self, value)
     RETVAL
 
 const char *
-credsPtr_principal(self, value)
+credsPtr_principal(self, value = NO_INIT)
     Credentials *self
-    const char *value = NO_INIT
+    const char *value
     CODE:
     const char *p;
     if (items > 1) {
