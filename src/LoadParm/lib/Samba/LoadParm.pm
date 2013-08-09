@@ -3,8 +3,10 @@ package Samba::LoadParm;
 use 5.014002;
 use strict;
 use warnings;
+use Carp;
 
 require Exporter;
+use AutoLoader;
 
 our @ISA = qw(Exporter);
 
@@ -27,10 +29,57 @@ our @EXPORT = qw(
 
 our $VERSION = '0.01';
 
+my %functions = (
+    default_path    => \&_default_path,
+    setup_dir       => \&_setup_dir,
+    modules_dir     => \&_modules_dir,
+    bin_dir         => \&_bin_dir,
+    sbin_dir        => \&_sbin_dir,
+    private_path    => \&_private_path,
+    server_role     => \&_server_role,
+    load            => \&_load,
+    load_default    => \&_load_default,
+    is_myname       => \&_is_myname,
+    is_mydomain     => \&_is_mydomain,
+);
+
+sub AUTOLOAD
+{
+    my $self = shift;
+
+    our $AUTOLOAD;
+
+    my $attr = $AUTOLOAD;
+    $attr =~ s/.*:://;
+    return unless $attr =~ /[^A-Z]/;
+    print STDERR "$attr\n";
+
+    die "Method undef ->$attr()\n" unless defined($functions{$attr});
+    return $functions{$attr}->($self->{context}, @_);
+}
+
 require XSLoader;
 XSLoader::load('Samba::LoadParm', $VERSION);
 
 # Preloaded methods go here.
+
+sub new
+{
+    my ($class, %params) = @_;
+
+    my $self = {};
+    bless ($self, $class);
+
+    $self->{context} = _init();
+
+    return $self;
+}
+
+sub DESTROY
+{
+    my ($self) = @_;
+    _destroy($self->{context});
+}
 
 1;
 __END__
