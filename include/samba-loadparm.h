@@ -7,6 +7,6 @@
 typedef struct {
     TALLOC_CTX *mem_ctx;
     struct loadparm_context *lp_ctx;
-} LP_CTX;
+} LoadParm;
 
 #endif

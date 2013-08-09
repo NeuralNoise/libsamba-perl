@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 3;
+use Test::More tests => 1;
 BEGIN { use_ok('Samba::LoadParm') };
 
 #########################
@@ -16,7 +16,3 @@ BEGIN { use_ok('Samba::LoadParm') };
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
-my $lp = new Samba::LoadParm();
-isa_ok($lp, "Samba::LoadParm");
-
-ok($lp->load_default() == 1, "load default smb.conf");

@@ -15,110 +15,122 @@
  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include <EXTERN.h>
-#include <perl.h>
-#include <XSUB.h>
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
 
 #include "ppport.h"
 
-#include <Samba-LoadParm.h>
-#include <samba/dynconfig.h>
-
-void do_free(LP_CTX *ctx)
-{
-    if (ctx->mem_ctx != NULL)
-        talloc_free(ctx->mem_ctx);
-    if (ctx != NULL)
-        free(ctx);
-}
+#include "samba-loadparm.h"
+#include "samba/dynconfig.h"
 
 MODULE = Samba::LoadParm        PACKAGE = Samba::LoadParm
 PROTOTYPES: ENABLE
 
-LP_CTX *
-_init()
+LoadParm *
+new(class)
+    SV *class
 CODE:
-    TALLOC_CTX *mem_ctx;
-    LP_CTX *ctx;
+    TALLOC_CTX *mem_ctx = NULL;
+    LoadParm *self = NULL;
+    const char *classname;
+    bool ret;
 
-    ctx = malloc(sizeof (LP_CTX));
-    if (ctx == NULL) {
-        croak("No memory");
+    if (sv_isobject(class)) {
+        classname = sv_reftype(SvRV(class), 1);
+    } else {
+        if (!SvPOK(class))
+            croak("%s: Need an object or class name as first "
+                  "argument to the constructor", __func__);
+        classname = SvPV_nolen(class);
     }
 
-    ctx->mem_ctx = talloc_named(NULL, 0, "Samba::LoadParm");
-    if (ctx->mem_ctx == NULL) {
-        do_free(ctx);
-        croak("No memory");
+    mem_ctx = talloc_named(NULL, 0, "Samba::LoadParm");
+    if (mem_ctx == NULL) {
+        croak("%s: No memory allocating memory context", __func__);
+        XSRETURN_UNDEF;
     }
 
-    ctx->lp_ctx = loadparm_init(ctx->mem_ctx);
-    if (ctx->lp_ctx == NULL) {
-        do_free(ctx);
-        croak("No memory");
+    self = talloc_zero(mem_ctx, LoadParm);
+    if (self == NULL) {
+        talloc_free(mem_ctx);
+        croak("%s: No memory allocating private data", __func__);
+        XSRETURN_UNDEF;
     }
-    RETVAL = ctx;
+    self->mem_ctx = mem_ctx;
+
+    self->lp_ctx = loadparm_init(mem_ctx);
+    if (self->lp_ctx == NULL) {
+        talloc_free(mem_ctx);
+        croak("%s: No memory allocating loadparm context", __func__);
+        XSRETURN_UNDEF;
+    }
+
+    RETVAL = self;
 OUTPUT:
     RETVAL
 
+MODULE = Samba::LoadParm    PACKAGE = LoadParmPtr   PREFIX = lpPtr_
+PROTOTYPES: ENABLE
+
 const char *
-_default_path(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_default_path(self)
+    LoadParm *self
+    CODE:
     RETVAL = lp_default_path();
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 const char *
-_setup_dir(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_setup_dir(self)
+    LoadParm *self
+    CODE:
     RETVAL = dyn_SETUPDIR;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 const char *
-_modules_dir(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_modules_dir(self)
+    LoadParm *self
+    CODE:
     RETVAL = dyn_MODULESDIR;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 const char *
-_bin_dir(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_bin_dir(self)
+    LoadParm *self
+    CODE:
     RETVAL = dyn_BINDIR;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 const char *
-_sbin_dir(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_sbin_dir(self)
+    LoadParm *self
+    CODE:
     RETVAL = dyn_SBINDIR;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 const char *
-_private_path(ctx, name)
-    LP_CTX *ctx
+lpPtr_private_path(self, name)
+    LoadParm *self
     const char *name
-CODE:
+    CODE:
     char *path;
-    path = lpcfg_private_path(ctx->mem_ctx, ctx->lp_ctx, name);
+    path = lpcfg_private_path(self->mem_ctx, self->lp_ctx, name);
     RETVAL = path;
     talloc_free(path);
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 const char *
-_server_role(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_server_role(self)
+    LoadParm *self
+    CODE:
     uint32_t role;
-    role = lpcfg_server_role(ctx->lp_ctx);
+    role = lpcfg_server_role(self->lp_ctx);
     switch (role) {
     case ROLE_STANDALONE:
         RETVAL = "ROLE_STANDALONE";
@@ -141,56 +153,56 @@ CODE:
     default:
         croak("Unknown role");
     }
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 int
-_load(ctx, filename)
-    LP_CTX *ctx
+lpPtr_load(self, filename)
+    LoadParm *self
     const char *filename
-CODE:
+    CODE:
     bool ret;
-    ret = lpcfg_load(ctx->lp_ctx, filename);
+    ret = lpcfg_load(self->lp_ctx, filename);
     if (!ret) {
         croak("Unable to load file %s", filename);
     }
     RETVAL = ret;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 int
-_load_default(ctx)
-    LP_CTX *ctx
-CODE:
+lpPtr_load_default(self)
+    LoadParm *self
+    CODE:
     bool ret;
-    ret = lpcfg_load_default(ctx->lp_ctx);
+    ret = lpcfg_load_default(self->lp_ctx);
     if (!ret) {
         croak("Unable to load dafault file");
     }
     RETVAL = ret;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 int
-_is_myname(ctx, name)
-    LP_CTX *ctx
+lpPtr_is_myname(self, name)
+    LoadParm *self
     const char *name
-CODE:
-    RETVAL = lpcfg_is_myname(ctx->lp_ctx, name);
-OUTPUT:
+    CODE:
+    RETVAL = lpcfg_is_myname(self->lp_ctx, name);
+    OUTPUT:
     RETVAL
 
 int
-_is_mydomain(ctx, name)
-    LP_CTX *ctx
+lpPtr_is_mydomain(self, name)
+    LoadParm *self
     const char *name
-CODE:
-    RETVAL = lpcfg_is_mydomain(ctx->lp_ctx, name);
-OUTPUT:
+    CODE:
+    RETVAL = lpcfg_is_mydomain(self->lp_ctx, name);
+    OUTPUT:
     RETVAL
 
 void
-_destroy(ctx)
-    LP_CTX *ctx
+lpPtr_DESTROY(self)
+    LoadParm *self
 CODE:
-    do_free(ctx);
+    talloc_free(self->mem_ctx);
