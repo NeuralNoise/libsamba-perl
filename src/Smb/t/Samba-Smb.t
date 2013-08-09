@@ -8,7 +8,9 @@
 use strict;
 use warnings;
 
-use Test::More tests => 2;
+use Test::More tests => 12;
+BEGIN { use_ok('Samba::LoadParm') };
+BEGIN { use_ok('Samba::Credentials') };
 BEGIN { use_ok('Samba::Smb') };
 
 
@@ -35,8 +37,21 @@ foreach my $constname (qw(
 }
 
 ok( $fail == 0 , 'Constants' );
+
 #########################
 
-# Insert your test code below, the Test::More module is use()ed here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
+my $lp = new Samba::LoadParm();
+isa_ok($lp, 'LoadParmPtr');
+ok($lp->load_default() == 1, "load default smb.conf");
 
+my $creds = new Samba::Credentials($lp);
+isa_ok($creds, 'CredentialsPtr');
+ok($creds->guess() == 1, "Guess credentials");
+ok($creds->username('administrator') eq 'administrator', "Set username");
+ok($creds->password('Zentyal1234') eq 'Zentyal1234', "Set password");
+
+my $target = "sefirot.kernevil.lan";
+my $service = "sysvol";
+my $smb = new Samba::Smb($lp, $creds, $target, $service);
+isa_ok($smb, 'SmbPtr');
+ok(defined $smb, "Connect");

@@ -208,11 +208,14 @@ credsPtr_kerberos_forwardable(self, value = NO_INIT)
     OUTPUT:
     RETVAL
 
-void
+int
 credsPtr_guess(self)
     Credentials *self
     CODE:
     cli_credentials_guess(self->ccreds, self->lp->lp_ctx);
+    RETVAL = 1;
+    OUTPUT:
+    RETVAL
 
 void
 credsPtr_set_machine_account(self)

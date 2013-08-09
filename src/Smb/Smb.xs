@@ -15,16 +15,16 @@
  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
 
 #include "ppport.h"
 
-#include "samba-loadparm.h"
-#include "samba-credentials.h"
-#include "samba-descriptor.h"
-#include "samba-smb.h"
+#include <Samba-LoadParm.h>
+#include <Samba-Credentials.h>
+#include <Samba-Descriptor.h>
+#include <Samba-Smb.h>
 
 #include <stdbool.h>
 #include <util/time.h>
