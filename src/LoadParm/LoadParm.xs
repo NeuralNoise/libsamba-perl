@@ -15,26 +15,25 @@
  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
 
 #include "ppport.h"
 
-#include "samba-loadparm.h"
-#include "samba/dynconfig.h"
+#include <Samba-LoadParm.h>
+#include <samba/dynconfig.h>
 
-MODULE = Samba::LoadParm        PACKAGE = Samba::LoadParm
+MODULE = Samba::LoadParm    PACKAGE = Samba::LoadParm
 PROTOTYPES: ENABLE
 
 LoadParm *
 new(class)
     SV *class
-CODE:
-    TALLOC_CTX *mem_ctx = NULL;
-    LoadParm *self = NULL;
+    CODE:
+    TALLOC_CTX *mem_ctx;
+    LoadParm *self;
     const char *classname;
-    bool ret;
 
     if (sv_isobject(class)) {
         classname = sv_reftype(SvRV(class), 1);
@@ -48,14 +47,12 @@ CODE:
     mem_ctx = talloc_named(NULL, 0, "Samba::LoadParm");
     if (mem_ctx == NULL) {
         croak("%s: No memory allocating memory context", __func__);
-        XSRETURN_UNDEF;
     }
 
     self = talloc_zero(mem_ctx, LoadParm);
     if (self == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating private data", __func__);
-        XSRETURN_UNDEF;
     }
     self->mem_ctx = mem_ctx;
 
@@ -63,11 +60,10 @@ CODE:
     if (self->lp_ctx == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating loadparm context", __func__);
-        XSRETURN_UNDEF;
     }
 
     RETVAL = self;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 MODULE = Samba::LoadParm    PACKAGE = LoadParmPtr   PREFIX = lpPtr_

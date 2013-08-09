@@ -3,7 +3,7 @@
 
 #include <talloc.h>
 #include <credentials.h>
-#include "samba-loadparm.h"
+#include <Samba-LoadParm.h>
 
 typedef struct {
     TALLOC_CTX *mem_ctx;
