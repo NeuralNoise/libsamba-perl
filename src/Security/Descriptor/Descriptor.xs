@@ -15,20 +15,20 @@
  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
 
 #include "ppport.h"
 
-#include "util/data_blob.h"
 
-#include "samba-descriptor.h"
-#include "samba-ace.h"
-#include "gen_ndr/security.h"
-#include "security/security_descriptor.h"
-#include "security/sddl.h"
-#include "security/dom_sid.h"
+#include <util/data_blob.h>
+#include <Samba-Descriptor.h>
+#include <Samba-ACE.h>
+#include <gen_ndr/security.h>
+#include <security/security_descriptor.h>
+#include <security/sddl.h>
+#include <security/dom_sid.h>
 
 #include "const-c.inc"
 
