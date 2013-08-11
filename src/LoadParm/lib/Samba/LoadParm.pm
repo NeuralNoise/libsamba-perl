@@ -4,6 +4,8 @@ use 5.014002;
 use strict;
 use warnings;
 
+use XS::Object::Magic;
+
 require Exporter;
 
 our @ISA = qw(Exporter);
@@ -31,6 +33,18 @@ require XSLoader;
 XSLoader::load('Samba::LoadParm', $VERSION);
 
 # Preloaded methods go here.
+
+sub new
+{
+    my $class = shift;
+
+    my $self = {};
+    bless ($self, $class);
+
+    $self->init();
+
+    return $self;
+}
 
 1;
 __END__

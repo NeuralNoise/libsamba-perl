@@ -12,7 +12,7 @@ WriteMakefile(
     PREREQ_PM         => {},
     LIBS              => ["-L$samba_prefix/lib -ltalloc -lsamba-security"],
     DEFINE            => '',
-    INC               => "-I../../../include -I. -I$samba_prefix/include",
+    INC               => "-I../../../include -I. -I$samba_prefix/include -I/usr/lib/perl5/XS/Object/Magic/Install",
     OBJECT            => 'Descriptor.o',
     INST_LIB          => '../../../blib/lib',
     INST_ARCHLIB      => '../../../blib/arch',

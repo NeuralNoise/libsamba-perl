@@ -8,11 +8,10 @@
 use strict;
 use warnings;
 
-use Test::More tests => 12;
+use Test::More tests => 13;
 BEGIN { use_ok('Samba::LoadParm') };
 BEGIN { use_ok('Samba::Credentials') };
 BEGIN { use_ok('Samba::Smb') };
-
 
 my $fail = 0;
 foreach my $constname (qw(
@@ -33,7 +32,6 @@ foreach my $constname (qw(
     print "# fail: $@";
     $fail = 1;
   }
-
 }
 
 ok( $fail == 0 , 'Constants' );
@@ -41,17 +39,19 @@ ok( $fail == 0 , 'Constants' );
 #########################
 
 my $lp = new Samba::LoadParm();
-isa_ok($lp, 'LoadParmPtr');
+isa_ok($lp, 'Samba::LoadParm');
 ok($lp->load_default() == 1, "load default smb.conf");
 
 my $creds = new Samba::Credentials($lp);
-isa_ok($creds, 'CredentialsPtr');
+isa_ok($creds, 'Samba::Credentials');
 ok($creds->guess() == 1, "Guess credentials");
 ok($creds->username('administrator') eq 'administrator', "Set username");
 ok($creds->password('Zentyal1234') eq 'Zentyal1234', "Set password");
 
+my $smb = new Samba::Smb($lp, $creds);
+isa_ok($smb, 'Samba::Smb');
+ok(defined $smb, "Create");
+
 my $target = "sefirot.kernevil.lan";
 my $service = "sysvol";
-my $smb = new Samba::Smb($lp, $creds, $target, $service);
-isa_ok($smb, 'SmbPtr');
-ok(defined $smb, "Connect");
+ok($smb->connect($target, $service) == 1, "connect");

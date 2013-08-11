@@ -4,6 +4,7 @@ use 5.014002;
 use strict;
 use warnings;
 use Carp;
+use XS::Object::Magic;
 
 require Exporter;
 use AutoLoader;
@@ -66,6 +67,19 @@ require XSLoader;
 XSLoader::load('Samba::Credentials', $VERSION);
 
 # Preloaded methods go here.
+
+sub new
+{
+    my $class = shift;
+    my $lp = shift;
+
+    my $self = {};
+    bless ($self, $class);
+
+    $self->init($lp);
+
+    return $self;
+}
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 

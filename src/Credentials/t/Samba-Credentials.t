@@ -31,11 +31,11 @@ ok( $fail == 0 , 'Constants' );
 
 
 my $lp = new Samba::LoadParm();
-isa_ok($lp, "LoadParmPtr");
+isa_ok($lp, "Samba::LoadParm");
 ok($lp->load_default() == 1, "Load default smb.conf");
 
 my $creds = new Samba::Credentials($lp);
-isa_ok($creds, "CredentialsPtr");
+isa_ok($creds, "Samba::Credentials");
 
 ok($creds->kerberos_state(CRED_AUTO_USE_KERBEROS) == CRED_AUTO_USE_KERBEROS, "Set AUTO kerberos state");
 ok($creds->kerberos_state(CRED_MUST_USE_KERBEROS) == CRED_MUST_USE_KERBEROS, "Set MUST kerberos state");

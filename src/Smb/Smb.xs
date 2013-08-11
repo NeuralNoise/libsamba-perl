@@ -18,6 +18,7 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
+#include <xs_object_magic.h>
 
 #include "ppport.h"
 
@@ -44,171 +45,191 @@ PROTOTYPES: ENABLE
 
 INCLUDE: const-xs.inc
 
-Smb *
-new(class, lp, creds, hostname, service)
-    SV *class
-    LoadParm *lp
-    Credentials *creds
-    char *hostname
-    char *service
-CODE:
-    TALLOC_CTX *mem_ctx = NULL;
-    Smb *self = NULL;
+void
+init(self, lp, creds)
+    SV *self
+    SV *lp
+    SV *creds
+    PREINIT:
     NTSTATUS status;
-    const char *classname;
-
-    if (sv_isobject(class)) {
-        classname = sv_reftype(SvRV(class), 1);
-    } else {
-        if (!SvPOK(class))
-            croak("%s: Need an object or class name as "
-                  "first argument to the constructor", __func__);
-        classname = SvPV_nolen(class);
-    }
-
-    mem_ctx = talloc_named(NULL, 0, "Samba::Smb");
+    TALLOC_CTX *mem_ctx;
+    SmbCtx *ctx;
+    CODE:
+    mem_ctx = talloc_named(NULL, 0, "Samba::SmbCtx");
     if (mem_ctx == NULL) {
         croak("%s: No memory allocating talloc context", __func__);
     }
 
-    self = talloc_zero(mem_ctx, Smb);
-    if (self == NULL) {
+    ctx = talloc_zero(mem_ctx, SmbCtx);
+    if (ctx == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating private_data", __func__);
     }
-    self->mem_ctx = mem_ctx;
+    ctx->mem_ctx = mem_ctx;
 
-    self->ev_ctx = tevent_context_init(mem_ctx);
-    if (self->ev_ctx == NULL) {
+    ctx->ev_ctx = tevent_context_init(ctx->mem_ctx);
+    if (ctx->ev_ctx == NULL) {
         talloc_free(mem_ctx);
         croak("No memory allocating ev_ctx");
     }
-    tevent_loop_allow_nesting(self->ev_ctx);
+    tevent_loop_allow_nesting(ctx->ev_ctx);
 
     status = gensec_init();
     if (NT_STATUS_IS_ERR(status)) {
         talloc_free(mem_ctx);
         croak("Failed to initalise gensec: %s", nt_errstr(status));
     }
-
-    struct smbcli_options options;
-    struct smbcli_session_options session_options;
-
-    lpcfg_smbcli_options(lp->lp_ctx, &options);
-    lpcfg_smbcli_session_options(lp->lp_ctx, &session_options);
-
-    status = smbcli_tree_full_connection(
-                mem_ctx,
-                &self->tree,
-                hostname,
-                lpcfg_smb_ports(lp->lp_ctx),
-                service,
-                NULL,
-                lpcfg_socket_options(lp->lp_ctx),
-                creds->ccreds,
-                lpcfg_resolve_context(lp->lp_ctx),
-                self->ev_ctx,
-                &options,
-                &session_options,
-                lpcfg_gensec_settings(mem_ctx, lp->lp_ctx));
-    if (!NT_STATUS_IS_OK(status)) {
-        talloc_free(mem_ctx);
-        croak(nt_errstr(status));
-    }
-
-    RETVAL = self;
-OUTPUT:
-    RETVAL
-
-MODULE = Samba::Smb     PACKAGE = SmbPtr    PREFIX = smbPtr_
+    ctx->lp_ctx = ((LoadParmCtx *)xs_object_magic_get_struct_rv(aTHX_ lp))->lp_ctx;
+    ctx->creds = ((CredentialsCtx *)xs_object_magic_get_struct_rv(aTHX_ creds))->ccreds;
+    xs_object_magic_attach_struct(aTHX_ SvRV(self), ctx);
 
 int
-smbPtr_open(self, fname, flags, share_mode)
-    Smb *self
+connect(self, hostname, service)
+    SV *self
+    const char *hostname
+    const char *service
+    PREINIT:
+    NTSTATUS status;
+    SmbCtx *ctx;
+    struct smbcli_options options;
+    struct smbcli_session_options session_options;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    lpcfg_smbcli_options(ctx->lp_ctx, &options);
+    lpcfg_smbcli_session_options(ctx->lp_ctx, &session_options);
+
+    status = smbcli_tree_full_connection(
+                ctx->mem_ctx,
+                &ctx->tree,
+                hostname,
+                lpcfg_smb_ports(ctx->lp_ctx),
+                service,
+                NULL,
+                lpcfg_socket_options(ctx->lp_ctx),
+                ctx->creds,
+                lpcfg_resolve_context(ctx->lp_ctx),
+                ctx->ev_ctx,
+                &options,
+                &session_options,
+                lpcfg_gensec_settings(ctx->mem_ctx, ctx->lp_ctx));
+    if (!NT_STATUS_IS_OK(status)) {
+        croak(nt_errstr(status));
+    }
+    RETVAL = 1;
+    OUTPUT:
+    RETVAL
+
+int
+open(self, fname, flags, share_mode)
+    SV *self
     const char *fname
     int flags
     int share_mode
-CODE:
+    PREINIT:
+    SmbCtx *ctx;
     int fnum;
-
-    fnum = smbcli_open(self->tree, fname, flags, share_mode);
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    fnum = smbcli_open(ctx->tree, fname, flags, share_mode);
     if (fnum == -1) {
-        croak("Failed to open %s: %s", fname, smbcli_errstr(self->tree));
+        croak("Failed to open %s: %s", fname, smbcli_errstr(ctx->tree));
     }
     RETVAL = fnum;
 OUTPUT:
     RETVAL
 
 int
-smbPtr_close(self, fnum)
-    Smb *self
+close(self, fnum)
+    SV *self
     int fnum
-CODE:
+    PREINIT:
     NTSTATUS status;
-    status = smbcli_close(self->tree, fnum);
+    SmbCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    status = smbcli_close(ctx->tree, fnum);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to close: %s (%s)", nt_errstr(status),
-            smbcli_errstr(self->tree));
+            smbcli_errstr(ctx->tree));
     }
     RETVAL = 1;
-OUTPUT:
+    OUTPUT:
     RETVAL
 
 int
-smbPtr_mkdir(self, dname)
-    Smb *self
+mkdir(self, dname)
+    SV *self
     const char *dname
-    CODE:
+    PREINIT:
+    SmbCtx *ctx;
     NTSTATUS status;
-
-    status = smbcli_mkdir(self->tree, dname);
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    status = smbcli_mkdir(ctx->tree, dname);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to mkdir %s: %s (%s)", dname, nt_errstr(status),
-            smbcli_errstr(self->tree));
+            smbcli_errstr(ctx->tree));
     }
     RETVAL = 1;
     OUTPUT:
     RETVAL
 
 int
-smbPtr_rmdir(self, dname)
-    Smb *self
+rmdir(self, dname)
+    SV *self
     const char *dname
-    CODE:
+    PREINIT:
     NTSTATUS status;
-
-    status = smbcli_rmdir(self->tree, dname);
+    SmbCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    status = smbcli_rmdir(ctx->tree, dname);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to rmdir %d: %s (%s)", dname, nt_errstr(status),
-            smbcli_errstr(self->tree));
+            smbcli_errstr(ctx->tree));
     }
     RETVAL = 1;
     OUTPUT:
     RETVAL
 
-ssize_t smbPtr_write(self, fnum, data, length)
-    Smb *self
+ssize_t
+write(self, fnum, data, length)
+    SV *self
     int fnum
     const char *data
     size_t length
+    PREINIT:
+    SmbCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    RETVAL = smbcli_write(self->tree, fnum, 0, data, 0, length);
+    RETVAL = smbcli_write(ctx->tree, fnum, 0, data, 0, length);
     OUTPUT:
     RETVAL
 
 int
-smbPtr_set_sd(self, filename, sd, flags = NO_INIT)
-    Smb *self
+set_sd(self, filename, sd, flags = NO_INIT)
+    SV *self
     char *filename
-    Descriptor *sd
+    SV *sd
     int flags
-CODE:
+    PREINIT:
+    SmbCtx *ctx;
+    DescriptorCtx *sd_ctx;
     NTSTATUS status;
     union smb_open io_open;
     union smb_close io_close;
     union smb_setfileinfo io_finfo;
     int fnum;
-
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    sd_ctx = xs_object_magic_get_struct_rv(aTHX_ sd);
+    CODE:
     /* Open file */
     ZERO_STRUCT(io_open);
     io_open.generic.level = RAW_OPEN_NTCREATEX;
@@ -225,7 +246,7 @@ CODE:
     io_open.ntcreatex.in.security_flags = 0;
     io_open.ntcreatex.in.fname = filename;
 
-    status = smb_raw_open(self->tree, self->mem_ctx, &io_open);
+    status = smb_raw_open(ctx->tree, ctx->mem_ctx, &io_open);
     if (!NT_STATUS_IS_OK(status)) {
         croak("Failed to open: %s", nt_errstr(status));
     }
@@ -235,7 +256,7 @@ CODE:
     ZERO_STRUCT(io_finfo);
     io_finfo.set_secdesc.level = RAW_SFILEINFO_SEC_DESC;
     io_finfo.set_secdesc.in.file.fnum = fnum;
-    io_finfo.set_secdesc.in.sd = sd->sd;
+    io_finfo.set_secdesc.in.sd = sd_ctx->sd;
     if (flags) {
         io_finfo.set_secdesc.in.secinfo_flags = flags;
     } else {
@@ -248,7 +269,7 @@ CODE:
                                            SECINFO_PROTECTED_SACL |
                                            SECINFO_UNPROTECTED_SACL;
     }
-    status = smb_raw_set_secdesc(self->tree, &io_finfo);
+    status = smb_raw_set_secdesc(ctx->tree, &io_finfo);
     if (!NT_STATUS_IS_OK(status)) {
         croak("Failed to set security descriptor: %s", nt_errstr(status));
     }
@@ -258,11 +279,21 @@ CODE:
     io_close.close.level = RAW_CLOSE_CLOSE;
     io_close.close.in.file.fnum = fnum;
     io_close.close.in.write_time = 0;
-    status = smb_raw_close(self->tree, &io_close);
+    status = smb_raw_close(ctx->tree, &io_close);
     if (!NT_STATUS_IS_OK(status)) {
         croak("Failed to close: %s", nt_errstr(status));
     }
-
     RETVAL = 1;
-OUTPUT:
+    OUTPUT:
     RETVAL
+
+void
+DESTROY(self)
+    SV *self
+    PREINIT:
+    SmbCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    talloc_free(ctx->mem_ctx);
+

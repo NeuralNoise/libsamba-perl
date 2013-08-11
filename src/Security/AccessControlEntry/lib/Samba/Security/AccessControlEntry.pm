@@ -3,6 +3,7 @@ package Samba::Security::AccessControlEntry;
 use 5.014002;
 use strict;
 use warnings;
+use XS::Object::Magic;
 
 require Exporter;
 
@@ -31,6 +32,22 @@ require XSLoader;
 XSLoader::load('Samba::Security::AccessControlEntry', $VERSION);
 
 # Preloaded methods go here.
+
+sub new
+{
+    my $class = shift;
+    my $sid = shift;
+    my $type = shift;
+    my $mask = shift;
+    my $flags = shift;
+
+    my $self = {};
+    bless ($self, $class);
+
+    $self->init($sid, $type, $mask, $flags);
+
+    return $self;
+}
 
 1;
 __END__

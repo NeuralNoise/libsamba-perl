@@ -6,6 +6,6 @@
 
 typedef struct {
     struct security_ace ace;
-} AccessControlEntry;;
+} AccessControlEntryCtx;
 
 #endif

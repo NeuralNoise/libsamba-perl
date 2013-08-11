@@ -8,7 +8,7 @@
 typedef struct {
     TALLOC_CTX *mem_ctx;
     struct cli_credentials *ccreds;
-    LoadParm *lp;
-} Credentials;
+    LoadParmCtx *lp;
+} CredentialsCtx;
 
 #endif

@@ -18,6 +18,7 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
+#include <xs_object_magic.h>
 
 #include "ppport.h"
 
@@ -30,42 +31,36 @@
 
 MODULE = Samba::Security::AccessControlEntry PACKAGE = Samba::Security::AccessControlEntry
 
-AccessControlEntry *
-new(class, sid_str, type, mask, flags)
-    SV *class
+void
+init(self, sid_str, type, mask, flags)
+    SV *self
     const char *sid_str
     unsigned long type
     unsigned long mask
     unsigned char flags
+    PREINIT:
+    AccessControlEntryCtx *ctx;
+    INIT:
     CODE:
-    AccessControlEntry *self;
-    const char *classname;
-
-    if (sv_isobject(class)) {
-        classname = sv_reftype(SvRV(class), 1);
-    } else {
-        if (!SvPOK(class))
-            croak("%s: Need an object or class name as "
-                  "first argument to the constructor", __func__);
-        classname = SvPV_nolen(class);
+    ctx = malloc(sizeof (AccessControlEntryCtx));
+    if (ctx == NULL) {
+        croak("No memory");
     }
-    self = malloc(sizeof (AccessControlEntry));
 
-    struct dom_sid *sid = &(self->ace.trustee);
+    struct dom_sid *sid = &(ctx->ace.trustee);
     if (!string_to_sid(sid, sid_str)) {
         croak("Failed to parse SID '%s'", sid_str);
     }
 
-    init_sec_ace(&self->ace, sid, type, mask, flags);
-
-    RETVAL = self;
-OUTPUT:
-    RETVAL
-
-MODULE = Samba::Security::AccessControlEntry PACKAGE = AccessControlEntryPtr PREFIX=acePtr_
+    init_sec_ace(&ctx->ace, sid, type, mask, flags);
+    xs_object_magic_attach_struct(aTHX_ SvRV(self), ctx);
 
 void
-acePtr_DESTROY(self)
-    AccessControlEntry *self
-CODE:
-    free(self);
+DESTROY(self)
+    SV *self
+    PREINIT:
+    AccessControlEntryCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    free(ctx);

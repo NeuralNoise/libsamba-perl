@@ -17,6 +17,6 @@ BEGIN { use_ok('Samba::LoadParm') };
 # its man page ( perldoc Test::More ) for help writing this test script.
 
 my $lp = new Samba::LoadParm();
-isa_ok($lp, "LoadParmPtr");
+isa_ok($lp, "Samba::LoadParm");
 
 ok($lp->load_default() == 1, "Load default smb.conf file");

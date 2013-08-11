@@ -18,6 +18,7 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
+#include <xs_object_magic.h>
 
 #include "ppport.h"
 
@@ -27,106 +28,118 @@
 MODULE = Samba::LoadParm    PACKAGE = Samba::LoadParm
 PROTOTYPES: ENABLE
 
-LoadParm *
-new(class)
-    SV *class
-    CODE:
+void
+init(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
     TALLOC_CTX *mem_ctx;
-    LoadParm *self;
-    const char *classname;
-
-    if (sv_isobject(class)) {
-        classname = sv_reftype(SvRV(class), 1);
-    } else {
-        if (!SvPOK(class))
-            croak("%s: Need an object or class name as first "
-                  "argument to the constructor", __func__);
-        classname = SvPV_nolen(class);
-    }
-
+    CODE:
     mem_ctx = talloc_named(NULL, 0, "Samba::LoadParm");
     if (mem_ctx == NULL) {
         croak("%s: No memory allocating memory context", __func__);
     }
 
-    self = talloc_zero(mem_ctx, LoadParm);
-    if (self == NULL) {
+    ctx = talloc_zero(mem_ctx, LoadParmCtx);
+    if (ctx == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating private data", __func__);
     }
-    self->mem_ctx = mem_ctx;
+    ctx->mem_ctx = mem_ctx;
 
-    self->lp_ctx = loadparm_init(mem_ctx);
-    if (self->lp_ctx == NULL) {
+    ctx->lp_ctx = loadparm_init(mem_ctx);
+    if (ctx->lp_ctx == NULL) {
         talloc_free(mem_ctx);
         croak("%s: No memory allocating loadparm context", __func__);
     }
-
-    RETVAL = self;
-    OUTPUT:
-    RETVAL
-
-MODULE = Samba::LoadParm    PACKAGE = LoadParmPtr   PREFIX = lpPtr_
-PROTOTYPES: ENABLE
+    xs_object_magic_attach_struct(aTHX_ SvRV(self), ctx);
 
 const char *
-lpPtr_default_path(self)
-    LoadParm *self
+default_path(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     RETVAL = lp_default_path();
     OUTPUT:
     RETVAL
 
 const char *
-lpPtr_setup_dir(self)
-    LoadParm *self
+setup_dir(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     RETVAL = dyn_SETUPDIR;
     OUTPUT:
     RETVAL
 
 const char *
-lpPtr_modules_dir(self)
-    LoadParm *self
+modules_dir(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     RETVAL = dyn_MODULESDIR;
     OUTPUT:
     RETVAL
 
 const char *
-lpPtr_bin_dir(self)
-    LoadParm *self
+bin_dir(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     RETVAL = dyn_BINDIR;
     OUTPUT:
     RETVAL
 
 const char *
-lpPtr_sbin_dir(self)
-    LoadParm *self
+sbin_dir(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     RETVAL = dyn_SBINDIR;
     OUTPUT:
     RETVAL
 
 const char *
-lpPtr_private_path(self, name)
-    LoadParm *self
+private_path(self, name)
+    SV *self
     const char *name
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     char *path;
-    path = lpcfg_private_path(self->mem_ctx, self->lp_ctx, name);
+    path = lpcfg_private_path(ctx->mem_ctx, ctx->lp_ctx, name);
     RETVAL = path;
     talloc_free(path);
     OUTPUT:
     RETVAL
 
 const char *
-lpPtr_server_role(self)
-    LoadParm *self
+server_role(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     uint32_t role;
-    role = lpcfg_server_role(self->lp_ctx);
+    role = lpcfg_server_role(ctx->lp_ctx);
     switch (role) {
     case ROLE_STANDALONE:
         RETVAL = "ROLE_STANDALONE";
@@ -153,12 +166,16 @@ lpPtr_server_role(self)
     RETVAL
 
 int
-lpPtr_load(self, filename)
-    LoadParm *self
+load(self, filename)
+    SV *self
     const char *filename
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     bool ret;
-    ret = lpcfg_load(self->lp_ctx, filename);
+    ret = lpcfg_load(ctx->lp_ctx, filename);
     if (!ret) {
         croak("Unable to load file %s", filename);
     }
@@ -167,11 +184,15 @@ lpPtr_load(self, filename)
     RETVAL
 
 int
-lpPtr_load_default(self)
-    LoadParm *self
+load_default(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     bool ret;
-    ret = lpcfg_load_default(self->lp_ctx);
+    ret = lpcfg_load_default(ctx->lp_ctx);
     if (!ret) {
         croak("Unable to load dafault file");
     }
@@ -180,25 +201,37 @@ lpPtr_load_default(self)
     RETVAL
 
 int
-lpPtr_is_myname(self, name)
-    LoadParm *self
+is_myname(self, name)
+    SV *self
     const char *name
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    RETVAL = lpcfg_is_myname(self->lp_ctx, name);
+    RETVAL = lpcfg_is_myname(ctx->lp_ctx, name);
     OUTPUT:
     RETVAL
 
 int
-lpPtr_is_mydomain(self, name)
-    LoadParm *self
+is_mydomain(self, name)
+    SV *self
     const char *name
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    RETVAL = lpcfg_is_mydomain(self->lp_ctx, name);
+    RETVAL = lpcfg_is_mydomain(ctx->lp_ctx, name);
     OUTPUT:
     RETVAL
 
 void
-lpPtr_DESTROY(self)
-    LoadParm *self
-CODE:
-    talloc_free(self->mem_ctx);
+DESTROY(self)
+    SV *self
+    PREINIT:
+    LoadParmCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    talloc_free(ctx->mem_ctx);
