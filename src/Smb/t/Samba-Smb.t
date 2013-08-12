@@ -3,18 +3,34 @@
 
 #########################
 
-# change 'tests => 2' to 'tests => last_test_to_print';
-
 use strict;
 use warnings;
 
-use Test::More tests => 13;
+use Test::More tests => 17;
+use Fcntl;
+
 BEGIN { use_ok('Samba::LoadParm') };
 BEGIN { use_ok('Samba::Credentials') };
 BEGIN { use_ok('Samba::Smb') };
 
 my $fail = 0;
 foreach my $constname (qw(
+    FILE_ATTRIBUTE_READONLY
+    FILE_ATTRIBUTE_HIDDEN
+    FILE_ATTRIBUTE_SYSTEM
+    FILE_ATTRIBUTE_VOLUME
+    FILE_ATTRIBUTE_DIRECTORY
+    FILE_ATTRIBUTE_ARCHIVE
+    FILE_ATTRIBUTE_DEVICE
+    FILE_ATTRIBUTE_NORMAL
+    FILE_ATTRIBUTE_TEMPORARY
+    FILE_ATTRIBUTE_SPARSE
+    FILE_ATTRIBUTE_REPARSE_POINT
+    FILE_ATTRIBUTE_COMPRESSED
+    FILE_ATTRIBUTE_OFFLINE
+    FILE_ATTRIBUTE_NONINDEXED
+    FILE_ATTRIBUTE_ENCRYPTED
+    FILE_ATTRIBUTE_ALL_MASK
 	DENY_DOS
     DENY_ALL
     DENY_WRITE
@@ -55,3 +71,27 @@ ok(defined $smb, "Create");
 my $target = "sefirot.kernevil.lan";
 my $service = "sysvol";
 ok($smb->connect($target, $service) == 1, "connect");
+
+my $listAttributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN |
+                     FILE_ATTRIBUTE_DIRECTORY;
+my $list = $smb->list("/*", $listAttributes);
+ok(defined $list, "list");
+
+my $fd = $smb->open("/kernevil.lan/Policies/{6AC1786C-016F-11D2-945F-00C04FB984F9}/GPT.INI", O_RDONLY, DENY_NONE);
+ok($fd > 0, "open");
+
+my $fileAttr = $smb->getattr($fd);
+ok(defined $fileAttr, "getattr");
+
+my $closeRet = $smb->close($fd);
+ok($closeRet == 1, "close");
+
+# TODO Write tests for:
+# chkpath
+# mkdir
+# rmdir
+# deltree
+# rename
+# unlink
+# write
+# set_sd

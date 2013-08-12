@@ -65,6 +65,129 @@ constant_8 (pTHX_ const char *name, IV *iv_return) {
 }
 
 static int
+constant_21 (pTHX_ const char *name, IV *iv_return) {
+  /* When generated this function returned values for the list of names given
+     here.  However, subsequent manual editing may have added or removed some.
+     FILE_ATTRIBUTE_DEVICE FILE_ATTRIBUTE_HIDDEN FILE_ATTRIBUTE_NORMAL
+     FILE_ATTRIBUTE_SPARSE FILE_ATTRIBUTE_SYSTEM FILE_ATTRIBUTE_VOLUME */
+  /* Offset 18 gives the best switch position.  */
+  switch (name[18]) {
+  case 'D':
+    if (memEQ(name, "FILE_ATTRIBUTE_HIDDEN", 21)) {
+    /*                                 ^         */
+#ifdef FILE_ATTRIBUTE_HIDDEN
+      *iv_return = FILE_ATTRIBUTE_HIDDEN;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'I':
+    if (memEQ(name, "FILE_ATTRIBUTE_DEVICE", 21)) {
+    /*                                 ^         */
+#ifdef FILE_ATTRIBUTE_DEVICE
+      *iv_return = FILE_ATTRIBUTE_DEVICE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'M':
+    if (memEQ(name, "FILE_ATTRIBUTE_NORMAL", 21)) {
+    /*                                 ^         */
+#ifdef FILE_ATTRIBUTE_NORMAL
+      *iv_return = FILE_ATTRIBUTE_NORMAL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'R':
+    if (memEQ(name, "FILE_ATTRIBUTE_SPARSE", 21)) {
+    /*                                 ^         */
+#ifdef FILE_ATTRIBUTE_SPARSE
+      *iv_return = FILE_ATTRIBUTE_SPARSE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'T':
+    if (memEQ(name, "FILE_ATTRIBUTE_SYSTEM", 21)) {
+    /*                                 ^         */
+#ifdef FILE_ATTRIBUTE_SYSTEM
+      *iv_return = FILE_ATTRIBUTE_SYSTEM;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'U':
+    if (memEQ(name, "FILE_ATTRIBUTE_VOLUME", 21)) {
+    /*                                 ^         */
+#ifdef FILE_ATTRIBUTE_VOLUME
+      *iv_return = FILE_ATTRIBUTE_VOLUME;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  }
+  return PERL_constant_NOTFOUND;
+}
+
+static int
+constant_24 (pTHX_ const char *name, IV *iv_return) {
+  /* When generated this function returned values for the list of names given
+     here.  However, subsequent manual editing may have added or removed some.
+     FILE_ATTRIBUTE_DIRECTORY FILE_ATTRIBUTE_ENCRYPTED FILE_ATTRIBUTE_TEMPORARY
+     */
+  /* Offset 20 gives the best switch position.  */
+  switch (name[20]) {
+  case 'P':
+    if (memEQ(name, "FILE_ATTRIBUTE_ENCRYPTED", 24)) {
+    /*                                   ^          */
+#ifdef FILE_ATTRIBUTE_ENCRYPTED
+      *iv_return = FILE_ATTRIBUTE_ENCRYPTED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'R':
+    if (memEQ(name, "FILE_ATTRIBUTE_TEMPORARY", 24)) {
+    /*                                   ^          */
+#ifdef FILE_ATTRIBUTE_TEMPORARY
+      *iv_return = FILE_ATTRIBUTE_TEMPORARY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'T':
+    if (memEQ(name, "FILE_ATTRIBUTE_DIRECTORY", 24)) {
+    /*                                   ^          */
+#ifdef FILE_ATTRIBUTE_DIRECTORY
+      *iv_return = FILE_ATTRIBUTE_DIRECTORY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  }
+  return PERL_constant_NOTFOUND;
+}
+
+static int
 constant (pTHX_ const char *name, STRLEN len, IV *iv_return) {
   /* Initially switch on the length of the name.  */
   /* When generated this function returned values for the list of names given
@@ -82,7 +205,15 @@ use ExtUtils::Constant qw (constant_types C_constant XS_constant);
 
 my $types = {map {($_, 1)} qw(IV)};
 my @names = (qw(DENY_ALL DENY_DOS DENY_FCB DENY_NONE DENY_READ DENY_WRITE
-	       DOS_OPEN_FCB DOS_OPEN_RDONLY DOS_OPEN_RDWR DOS_OPEN_WRONLY));
+	       DOS_OPEN_FCB DOS_OPEN_RDONLY DOS_OPEN_RDWR DOS_OPEN_WRONLY
+	       FILE_ATTRIBUTE_ALL_MASK FILE_ATTRIBUTE_ARCHIVE
+	       FILE_ATTRIBUTE_COMPRESSED FILE_ATTRIBUTE_DEVICE
+	       FILE_ATTRIBUTE_DIRECTORY FILE_ATTRIBUTE_ENCRYPTED
+	       FILE_ATTRIBUTE_HIDDEN FILE_ATTRIBUTE_NONINDEXED
+	       FILE_ATTRIBUTE_NORMAL FILE_ATTRIBUTE_OFFLINE
+	       FILE_ATTRIBUTE_READONLY FILE_ATTRIBUTE_REPARSE_POINT
+	       FILE_ATTRIBUTE_SPARSE FILE_ATTRIBUTE_SYSTEM
+	       FILE_ATTRIBUTE_TEMPORARY FILE_ATTRIBUTE_VOLUME));
 
 print constant_types(), "\n"; # macro defs
 foreach (C_constant ("Samba::Smb", 'constant', 'IV', $types, undef, 3, @names) ) {
@@ -183,6 +314,109 @@ __END__
 #endif
       }
       break;
+    }
+    break;
+  case 21:
+    return constant_21 (aTHX_ name, iv_return);
+    break;
+  case 22:
+    /* Names all of length 22.  */
+    /* FILE_ATTRIBUTE_ARCHIVE FILE_ATTRIBUTE_OFFLINE */
+    /* Offset 17 gives the best switch position.  */
+    switch (name[17]) {
+    case 'C':
+      if (memEQ(name, "FILE_ATTRIBUTE_ARCHIVE", 22)) {
+      /*                                ^           */
+#ifdef FILE_ATTRIBUTE_ARCHIVE
+        *iv_return = FILE_ATTRIBUTE_ARCHIVE;
+        return PERL_constant_ISIV;
+#else
+        return PERL_constant_NOTDEF;
+#endif
+      }
+      break;
+    case 'F':
+      if (memEQ(name, "FILE_ATTRIBUTE_OFFLINE", 22)) {
+      /*                                ^           */
+#ifdef FILE_ATTRIBUTE_OFFLINE
+        *iv_return = FILE_ATTRIBUTE_OFFLINE;
+        return PERL_constant_ISIV;
+#else
+        return PERL_constant_NOTDEF;
+#endif
+      }
+      break;
+    }
+    break;
+  case 23:
+    /* Names all of length 23.  */
+    /* FILE_ATTRIBUTE_ALL_MASK FILE_ATTRIBUTE_READONLY */
+    /* Offset 19 gives the best switch position.  */
+    switch (name[19]) {
+    case 'M':
+      if (memEQ(name, "FILE_ATTRIBUTE_ALL_MASK", 23)) {
+      /*                                  ^          */
+#ifdef FILE_ATTRIBUTE_ALL_MASK
+        *iv_return = FILE_ATTRIBUTE_ALL_MASK;
+        return PERL_constant_ISIV;
+#else
+        return PERL_constant_NOTDEF;
+#endif
+      }
+      break;
+    case 'O':
+      if (memEQ(name, "FILE_ATTRIBUTE_READONLY", 23)) {
+      /*                                  ^          */
+#ifdef FILE_ATTRIBUTE_READONLY
+        *iv_return = FILE_ATTRIBUTE_READONLY;
+        return PERL_constant_ISIV;
+#else
+        return PERL_constant_NOTDEF;
+#endif
+      }
+      break;
+    }
+    break;
+  case 24:
+    return constant_24 (aTHX_ name, iv_return);
+    break;
+  case 25:
+    /* Names all of length 25.  */
+    /* FILE_ATTRIBUTE_COMPRESSED FILE_ATTRIBUTE_NONINDEXED */
+    /* Offset 17 gives the best switch position.  */
+    switch (name[17]) {
+    case 'M':
+      if (memEQ(name, "FILE_ATTRIBUTE_COMPRESSED", 25)) {
+      /*                                ^              */
+#ifdef FILE_ATTRIBUTE_COMPRESSED
+        *iv_return = FILE_ATTRIBUTE_COMPRESSED;
+        return PERL_constant_ISIV;
+#else
+        return PERL_constant_NOTDEF;
+#endif
+      }
+      break;
+    case 'N':
+      if (memEQ(name, "FILE_ATTRIBUTE_NONINDEXED", 25)) {
+      /*                                ^              */
+#ifdef FILE_ATTRIBUTE_NONINDEXED
+        *iv_return = FILE_ATTRIBUTE_NONINDEXED;
+        return PERL_constant_ISIV;
+#else
+        return PERL_constant_NOTDEF;
+#endif
+      }
+      break;
+    }
+    break;
+  case 28:
+    if (memEQ(name, "FILE_ATTRIBUTE_REPARSE_POINT", 28)) {
+#ifdef FILE_ATTRIBUTE_REPARSE_POINT
+      *iv_return = FILE_ATTRIBUTE_REPARSE_POINT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
     }
     break;
   }
