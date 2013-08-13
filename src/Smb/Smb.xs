@@ -90,6 +90,32 @@ static void list_fn(struct clilist_file_info *finfo, const char *name, void *sta
      return;
 }
 
+void call_method_sv(SV * obj, char * method)
+{
+    int cnt;
+    dSP;
+    ENTER;
+    SAVETMPS;
+
+    PUSHMARK(SP);
+    EXTEND(SP, 1);
+    PUSHs(obj);
+    PUTBACK;
+
+    cnt = perl_call_method(method, G_VOID);
+
+    SPAGAIN;
+
+    if (cnt != 0) {
+        croak("init method call failed");
+    }
+
+    POPs;
+
+    FREETMPS;
+    LEAVE;
+}
+
 MODULE = Samba::Smb     PACKAGE = Samba::Smb
 PROTOTYPES: ENABLE
 
@@ -131,6 +157,7 @@ init(self, lp, creds)
     }
     ctx->lp_ctx = ((LoadParmCtx *)xs_object_magic_get_struct_rv(aTHX_ lp))->lp_ctx;
     ctx->creds = ((CredentialsCtx *)xs_object_magic_get_struct_rv(aTHX_ creds))->ccreds;
+    ctx->tree = NULL;
     xs_object_magic_attach_struct(aTHX_ SvRV(self), ctx);
 
 int
@@ -182,6 +209,9 @@ open(self, fname, flags, share_mode)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     fnum = smbcli_open(ctx->tree, fname, flags, share_mode);
     if (fnum == -1) {
         croak("Failed to open %s: %s", fname, smbcli_errstr(ctx->tree));
@@ -200,6 +230,9 @@ close(self, fnum)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_close(ctx->tree, fnum);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to close: %s (%s)", nt_errstr(status),
@@ -219,6 +252,9 @@ chkpath(self, path)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_chkpath(ctx->tree, path);
     if (NT_STATUS_IS_OK(status)) {
         RETVAL = 1;
@@ -238,6 +274,9 @@ mkdir(self, dname)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_mkdir(ctx->tree, dname);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to mkdir %s: %s (%s)", dname, nt_errstr(status),
@@ -257,6 +296,9 @@ rmdir(self, dname)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_rmdir(ctx->tree, dname);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to rmdir %d: %s (%s)", dname, nt_errstr(status),
@@ -276,6 +318,9 @@ deltree(self, dname)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     ret = smbcli_deltree(ctx->tree, dname);
     if (ret == -1) {
         croak("Failed to deltree: %s", smbcli_errstr(ctx->tree));
@@ -295,6 +340,9 @@ rename(self, src, dst)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_rename(ctx->tree, src, dst);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to rename (%s): %s", nt_errstr(status),
@@ -314,6 +362,9 @@ unlink(self, fname)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_unlink(ctx->tree, fname);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to unlink (%s): %s", nt_errstr(status),
@@ -334,16 +385,20 @@ write(self, fnum, data, length)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     RETVAL = smbcli_write(ctx->tree, fnum, 0, data, 0, length);
     OUTPUT:
     RETVAL
 
 int
-set_sd(self, filename, sd, flags = NO_INIT)
+set_sd(self, fname, sd, sinfo = (SECINFO_OWNER | SECINFO_GROUP | SECINFO_DACL | SECINFO_PROTECTED_DACL | SECINFO_UNPROTECTED_DACL | SECINFO_SACL | SECINFO_PROTECTED_SACL | SECINFO_UNPROTECTED_SACL), access_mask = SEC_FLAG_MAXIMUM_ALLOWED)
     SV *self
-    char *filename
+    char *fname
     SV *sd
-    int flags
+    uint32_t sinfo
+    int access_mask
     PREINIT:
     SmbCtx *ctx;
     DescriptorCtx *sd_ctx;
@@ -356,12 +411,15 @@ set_sd(self, filename, sd, flags = NO_INIT)
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     sd_ctx = xs_object_magic_get_struct_rv(aTHX_ sd);
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     /* Open file */
     ZERO_STRUCT(io_open);
     io_open.generic.level = RAW_OPEN_NTCREATEX;
     io_open.ntcreatex.in.root_fid.fnum = 0;
     io_open.ntcreatex.in.flags = 0;
-    io_open.ntcreatex.in.access_mask = SEC_FLAG_MAXIMUM_ALLOWED;
+    io_open.ntcreatex.in.access_mask = access_mask;
     io_open.ntcreatex.in.create_options = 0;
     io_open.ntcreatex.in.file_attr = FILE_ATTRIBUTE_NORMAL;
     io_open.ntcreatex.in.share_access = NTCREATEX_SHARE_ACCESS_READ |
@@ -370,7 +428,7 @@ set_sd(self, filename, sd, flags = NO_INIT)
     io_open.ntcreatex.in.open_disposition = NTCREATEX_DISP_OPEN;
     io_open.ntcreatex.in.impersonation = NTCREATEX_IMPERSONATION_ANONYMOUS;
     io_open.ntcreatex.in.security_flags = 0;
-    io_open.ntcreatex.in.fname = filename;
+    io_open.ntcreatex.in.fname = fname;
 
     status = smb_raw_open(ctx->tree, ctx->mem_ctx, &io_open);
     if (!NT_STATUS_IS_OK(status)) {
@@ -383,18 +441,7 @@ set_sd(self, filename, sd, flags = NO_INIT)
     io_finfo.set_secdesc.level = RAW_SFILEINFO_SEC_DESC;
     io_finfo.set_secdesc.in.file.fnum = fnum;
     io_finfo.set_secdesc.in.sd = sd_ctx->sd;
-    if (flags) {
-        io_finfo.set_secdesc.in.secinfo_flags = flags;
-    } else {
-        io_finfo.set_secdesc.in.secinfo_flags = SECINFO_OWNER |
-                                           SECINFO_GROUP |
-                                           SECINFO_DACL |
-                                           SECINFO_PROTECTED_DACL |
-                                           SECINFO_UNPROTECTED_DACL |
-                                           SECINFO_SACL |
-                                           SECINFO_PROTECTED_SACL |
-                                           SECINFO_UNPROTECTED_SACL;
-    }
+    io_finfo.set_secdesc.in.secinfo_flags = sinfo;
     status = smb_raw_set_secdesc(ctx->tree, &io_finfo);
     if (!NT_STATUS_IS_OK(status)) {
         croak("Failed to set security descriptor: %s", nt_errstr(status));
@@ -413,6 +460,87 @@ set_sd(self, filename, sd, flags = NO_INIT)
     OUTPUT:
     RETVAL
 
+
+SV *
+get_sd(self, fname, sinfo = (SECINFO_OWNER | SECINFO_GROUP | SECINFO_DACL | SECINFO_PROTECTED_DACL | SECINFO_UNPROTECTED_DACL | SECINFO_SACL | SECINFO_PROTECTED_SACL | SECINFO_UNPROTECTED_SACL), access_mask = SEC_FLAG_MAXIMUM_ALLOWED)
+    SV *self
+    const char *fname
+    uint32_t sinfo
+    int access_mask
+    PREINIT:
+    SmbCtx *ctx;
+    DescriptorCtx *sd_ctx;
+    HV *hash;
+    SV * obj;
+    int fnum;
+    NTSTATUS status;
+    union smb_open io_open;
+    union smb_fileinfo fio;
+    union smb_close io_close;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
+    /* Open file */
+    ZERO_STRUCT(io_open);
+    io_open.generic.level = RAW_OPEN_NTCREATEX;
+    io_open.ntcreatex.in.root_fid.fnum = 0;
+    io_open.ntcreatex.in.flags = 0;
+    io_open.ntcreatex.in.access_mask = access_mask;
+    io_open.ntcreatex.in.create_options = 0;
+    io_open.ntcreatex.in.file_attr = FILE_ATTRIBUTE_NORMAL;
+    io_open.ntcreatex.in.share_access = NTCREATEX_SHARE_ACCESS_READ |
+                                    NTCREATEX_SHARE_ACCESS_WRITE;
+    io_open.ntcreatex.in.alloc_size = 0;
+    io_open.ntcreatex.in.open_disposition = NTCREATEX_DISP_OPEN;
+    io_open.ntcreatex.in.impersonation = NTCREATEX_IMPERSONATION_ANONYMOUS;
+    io_open.ntcreatex.in.security_flags = 0;
+    io_open.ntcreatex.in.fname = fname;
+
+    status = smb_raw_open(ctx->tree, ctx->mem_ctx, &io_open);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to open: %s", nt_errstr(status));
+    }
+    fnum = io_open.ntcreatex.out.file.fnum;
+
+    /* Get security descriptor */
+    ZERO_STRUCT(fio);
+    fio.query_secdesc.level = RAW_FILEINFO_SEC_DESC;
+    fio.query_secdesc.in.file.fnum = fnum;
+    fio.query_secdesc.in.secinfo_flags = sinfo;
+    status = smb_raw_query_secdesc(ctx->tree, ctx->mem_ctx, &fio);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to query security descriptor: %s", nt_errstr(status));
+    }
+
+    /* Close file */
+    ZERO_STRUCT(io_close);
+    io_close.close.level = RAW_CLOSE_CLOSE;
+    io_close.close.in.file.fnum = fnum;
+    io_close.close.in.write_time = 0;
+    status = smb_raw_close(ctx->tree, &io_close);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to close: %s", nt_errstr(status));
+    }
+
+    /* Create a Samba::Security::Descriptor and initialize it */
+    hash = newHV();
+    obj = newRV_noinc((SV*)hash);
+    sv_bless(obj, gv_stashpv("Samba::Security::Descriptor", 0));
+    call_method_sv(obj, "init");
+
+    /* Get the DescriptorCtx */
+    sd_ctx = xs_object_magic_get_struct_rv(aTHX_ obj);
+
+    /* Set and realloc SD on the object memory context */
+    sd_ctx->sd = talloc_move(sd_ctx->mem_ctx, &fio.query_secdesc.out.sd);
+
+    RETVAL = obj;
+    OUTPUT:
+    RETVAL
+
 SV *
 getattr(self, fnum)
     SV *self
@@ -428,6 +556,9 @@ getattr(self, fnum)
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     ret = (HV *) sv_2mortal ((SV *) newHV ());
     CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
     status = smbcli_getattrE(ctx->tree, fnum, &mode, &size, &change_time,
                              &access_time, &write_time);
     if (NT_STATUS_IS_ERR(status)) {
@@ -458,8 +589,13 @@ list(self, mask, attributes)
     state = talloc_zero(ctx->mem_ctx, struct file_list);
     ret = (AV *) sv_2mortal ((SV *) newAV ());
     CODE:
+    if (ctx->tree == NULL) {
+        talloc_free(state);
+        croak("Not connected");
+    }
     rv = smbcli_list(ctx->tree, mask, attributes, list_fn, state);
     if (rv == -1) {
+        talloc_free(state);
         croak("Failed to list directory: %s", smbcli_errstr(ctx->tree));
     }
     for (i = 0; i < state->num_files; i++) {
