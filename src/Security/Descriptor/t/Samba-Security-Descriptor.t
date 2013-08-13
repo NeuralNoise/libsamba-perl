@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 2;
+use Test::More tests => 3;
 BEGIN { use_ok('Samba::Security::Descriptor') };
 
 
@@ -122,3 +122,5 @@ ok( $fail == 0 , 'Constants' );
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
+my $sd = new Samba::Security::Descriptor();
+isa_ok($sd, "Samba::Security::Descriptor");

@@ -7,7 +7,6 @@
 typedef struct {
     TALLOC_CTX *mem_ctx;
     struct security_descriptor *sd;
-    struct dom_sid *domain_sid;
 } DescriptorCtx;
 
 #endif

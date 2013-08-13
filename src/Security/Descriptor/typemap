@@ -1,2 +1,5 @@
 Descriptor *    T_PTROBJ
 AccessControlEntry * T_PTROBJ
+uint8_t *   T_PV
+uint16_t    T_UV
+uint32_t    T_UV

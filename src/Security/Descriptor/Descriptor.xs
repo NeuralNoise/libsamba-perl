@@ -30,6 +30,8 @@
 #include <security/security_descriptor.h>
 #include <security/sddl.h>
 #include <security/dom_sid.h>
+#include <ndr.h>
+#include <gen_ndr/ndr_security.h>
 
 #include "const-c.inc"
 
@@ -124,15 +126,20 @@ init(self)
     xs_object_magic_attach_struct(aTHX_ SvRV(self), ctx);
 
 const char *
-as_sddl(self)
+as_sddl(self, domain_sid)
     SV *self
+    const char *domain_sid
     PREINIT:
     DescriptorCtx *ctx;
     char *text;
+    struct dom_sid dom_sid;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    text = sddl_encode(ctx->mem_ctx, ctx->sd, ctx->domain_sid);
+    if (!string_to_sid(&dom_sid, domain_sid)) {
+        croak("Failed to parse domain sid '%s'", domain_sid);
+    }
+    text = sddl_encode(ctx->mem_ctx, ctx->sd, &dom_sid);
     if (text == NULL) {
         croak("Failed to encode SD in SDDL format");
     }
@@ -148,27 +155,21 @@ from_sddl(self, sddl, domain_sid)
     const char *domain_sid
     PREINIT:
     DescriptorCtx *ctx;
-    struct dom_sid *new_domain_sid;
+    struct dom_sid dom_sid;
     struct security_descriptor *new_sd;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    new_domain_sid = dom_sid_parse_talloc(ctx->mem_ctx, domain_sid);
-    if (new_domain_sid == NULL) {
-        croak("Cannot parse SID string %s", domain_sid);
-    } else {
-        talloc_free(ctx->domain_sid);
-        ctx->domain_sid = new_domain_sid;
+    if (!string_to_sid(&dom_sid, domain_sid)) {
+        croak("Failed to parse domain sid '%s'", domain_sid);
     }
-
-    new_sd = sddl_decode(ctx->mem_ctx, sddl, ctx->domain_sid);
+    new_sd = sddl_decode(ctx->mem_ctx, sddl, &dom_sid);
     if (new_sd == NULL) {
-        talloc_free(ctx->domain_sid);
         talloc_free(ctx->sd);
-        ctx->domain_sid = NULL;
         ctx->sd = NULL;
         croak("Cannot parse SDDL string '%s'", sddl);
     } else {
+        talloc_free(ctx->sd);
         ctx->sd = new_sd;
     }
     RETVAL = 1;
@@ -176,32 +177,20 @@ from_sddl(self, sddl, domain_sid)
     RETVAL
 
 int
-unmarshall(self, blob, length, domain_sid)
+unmarshall(self, blob, length)
     SV *self
     char *blob
-    unsigned int length
-    const char *domain_sid
+    size_t length
     PREINIT:
     DescriptorCtx *ctx;
     NTSTATUS status;
-    struct dom_sid *new_domain_sid;
     struct security_descriptor *new_sd;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    new_domain_sid = dom_sid_parse_talloc(ctx->mem_ctx, domain_sid);
-    if (new_domain_sid == NULL) {
-        croak("Cannot parse SID string %s", domain_sid);
-    } else {
-        talloc_free(ctx->domain_sid);
-        ctx->domain_sid = new_domain_sid;
-    }
-
     status = unmarshall_sec_desc(ctx->mem_ctx, blob, length, &ctx->sd);
     if (NT_STATUS_IS_ERR(status)) {
-        talloc_free(ctx->domain_sid);
         talloc_free(ctx->sd);
-        ctx->domain_sid = NULL;
         ctx->sd = NULL;
         croak("Cannot unmarshall security descriptor: %s", nt_errstr(status));
     }
@@ -232,6 +221,7 @@ marshall(self)
     OUTPUT:
     RETVAL
 
+
 int
 to_fs_sd(self)
     SV *self
@@ -244,9 +234,6 @@ to_fs_sd(self)
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
-    if (ctx->domain_sid == NULL) {
-        croak("Domain SID not initialized");
-    }
     if (ctx->sd == NULL) {
         croak("Security Descriptor not initialized");
     }
@@ -261,6 +248,7 @@ to_fs_sd(self)
     for (i = 0; i < acl->num_aces; i++) {
         struct security_ace *ace = &(acl->aces[i]);
         char *ace_sid_str = dom_sid_string(ctx->mem_ctx, &ace->trustee);
+
         if (!ace->type & SEC_ACE_TYPE_ACCESS_ALLOWED_OBJECT &&
                 strcmp(ace_sid_str, SID_BUILTIN_PREW2K) != 0) {
             ace->flags |= (SEC_ACE_FLAG_OBJECT_INHERIT |
@@ -271,7 +259,7 @@ to_fs_sd(self)
             ace->access_mask = ldapmask2filemask(ace->access_mask);
 
             struct security_ace *new_ace = security_ace_create(
-                fs_sd->dacl, ace_sid_str, ace->type, ace->access_mask,
+                fs_sd, ace_sid_str, ace->type, ace->access_mask,
                 ace->flags);
             status = security_descriptor_dacl_add(fs_sd, new_ace);
             if (NT_STATUS_IS_ERR(status)) {
@@ -280,7 +268,7 @@ to_fs_sd(self)
         }
         talloc_free(ace_sid_str);
     }
-    //talloc_free(self->sd);
+    talloc_free(ctx->sd);
     ctx->sd = fs_sd;
     RETVAL = 1;
     OUTPUT:
@@ -300,9 +288,6 @@ sacl_del(self, trustee_str)
     if (ctx->sd == NULL) {
         croak("Security descriptor not initialized");
     }
-    if (ctx->domain_sid == NULL) {
-        croak("Domain SID not initialized");
-    }
 
     trustee = dom_sid_parse_talloc(ctx->mem_ctx, trustee_str);
     if (trustee == NULL) {
@@ -310,6 +295,7 @@ sacl_del(self, trustee_str)
     }
 
     status = security_descriptor_sacl_del(ctx->sd, trustee);
+    talloc_free(trustee);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to delete SACL: %s", nt_errstr(status));
     }
@@ -325,6 +311,7 @@ sacl_add(self, ace)
     DescriptorCtx *ctx;
     AccessControlEntryCtx *ace_ctx;
     NTSTATUS status;
+    struct security_ace *new_ace;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     ace_ctx = xs_object_magic_get_struct_rv(aTHX_ ace);
@@ -332,11 +319,14 @@ sacl_add(self, ace)
     if (ctx->sd == NULL) {
         croak("Security descriptor not initialized");
     }
-    if (ctx->domain_sid == NULL) {
-        croak("Domain SID not initialized");
-    }
 
-    status = security_descriptor_sacl_add(ctx->sd, &ace_ctx->ace);
+    new_ace = talloc_zero(ctx->sd, struct security_ace);
+    if (new_ace == NULL) {
+        croak("No memory");
+    }
+    sec_ace_copy(new_ace, ace_ctx->ace);
+
+    status = security_descriptor_sacl_add(ctx->sd, new_ace);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to add SACL: %s", nt_errstr(status));
     }
@@ -358,9 +348,6 @@ dacl_del(self, trustee_str)
     if (ctx->sd == NULL) {
         croak("Security descriptor not initialized");
     }
-    if (ctx->domain_sid == NULL) {
-        croak("Domain SID not initialized");
-    }
 
     trustee = dom_sid_parse_talloc(ctx->mem_ctx, trustee_str);
     if (trustee == NULL) {
@@ -368,6 +355,7 @@ dacl_del(self, trustee_str)
     }
 
     status = security_descriptor_dacl_del(ctx->sd, trustee);
+    talloc_free(trustee);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to delete DACL: %s", nt_errstr(status));
     }
@@ -383,6 +371,7 @@ dacl_add(self, ace)
     DescriptorCtx *ctx;
     AccessControlEntryCtx *ace_ctx;
     NTSTATUS status;
+    struct security_ace *new_ace;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     ace_ctx = xs_object_magic_get_struct_rv(aTHX_ ace);
@@ -390,15 +379,54 @@ dacl_add(self, ace)
     if (ctx->sd == NULL) {
         croak("Security descriptor not initialized");
     }
-    if (ctx->domain_sid == NULL) {
-        croak("Domain SID not initialized");
-    }
 
-    status = security_descriptor_dacl_add(ctx->sd, &ace_ctx->ace);
+    new_ace = talloc_zero(ctx->sd, struct security_ace);
+    if (new_ace == NULL) {
+        croak("No memory");
+    }
+    sec_ace_copy(new_ace, ace_ctx->ace);
+
+    status = security_descriptor_dacl_add(ctx->sd, new_ace);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to add DACL: %s", nt_errstr(status));
     }
     RETVAL = 1;
+    OUTPUT:
+    RETVAL
+
+uint16_t
+type(self, type = NO_INIT)
+    SV *self
+    uint16_t type
+    PREINIT:
+    DescriptorCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    if (ctx->sd == NULL) {
+        croak("Security descriptor not initialized");
+    }
+    if (items > 1) {
+        ctx->sd->type = type;
+    }
+    RETVAL = ctx->sd->type;
+    OUTPUT:
+    RETVAL
+
+const char *
+dump(self)
+    SV *self
+    PREINIT:
+    DescriptorCtx *ctx;
+    char *str;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    str = ndr_print_struct_string(ctx->mem_ctx,
+            (ndr_print_fn_t)ndr_print_security_descriptor,
+            "security_descriptor", ctx->sd);
+    RETVAL = str;
+    talloc_free(str);
     OUTPUT:
     RETVAL
 
