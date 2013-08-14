@@ -1,3 +1,9 @@
+libsamba-perl (0.02) precise; urgency=low
+
+  * Add read function to Samba::Smb
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Wed, 14 Aug 2013 18:11:59 +0200
+
 libsamba-perl (0.01) precise; urgency=low
 
   * Initial Release.
