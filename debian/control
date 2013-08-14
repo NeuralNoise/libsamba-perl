@@ -3,7 +3,7 @@ Section: perl
 Priority: optional
 Maintainer: Samuel Cabrero <scabrero@zentyal.com>
 Build-Depends: debhelper (>= 8),
- perl, libxs-object-magic-perl, libbsd0, samba4 (>= 4.1.0rc1-zentyal4),
+ perl, libxs-object-magic-perl, libbsd0, samba4 (>= 4.1.0rc2-zentyal5),
 Standards-Version: 3.9.3
 Homepage: http://www.zentyal.org
 
