@@ -392,6 +392,37 @@ write(self, fnum, data, length)
     OUTPUT:
     RETVAL
 
+ssize_t
+read(self, fnum, buffer, offset, chunk_size)
+    SV *self
+    int fnum
+    SV *buffer = NO_INIT
+    off_t offset
+    size_t chunk_size
+    PREINIT:
+    SmbCtx *ctx;
+    char *buf;
+    ssize_t bytes;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
+    buf = malloc(chunk_size);
+    if (buf == NULL) {
+        croak("No memory");
+    }
+    bytes = smbcli_read(ctx->tree, fnum, buf, offset, chunk_size);
+    if (bytes < 0) {
+        croak("Failed to read: %s", smbcli_errstr(ctx->tree));
+    }
+    RETVAL = bytes;
+    sv_setpvn(ST(2), buf, bytes);
+    free(buf);
+    OUTPUT:
+    RETVAL
+
 int
 set_sd(self, fname, sd, sinfo = (SECINFO_OWNER | SECINFO_GROUP | SECINFO_DACL | SECINFO_PROTECTED_DACL | SECINFO_UNPROTECTED_DACL | SECINFO_SACL | SECINFO_PROTECTED_SACL | SECINFO_UNPROTECTED_SACL), access_mask = SEC_FLAG_MAXIMUM_ALLOWED)
     SV *self

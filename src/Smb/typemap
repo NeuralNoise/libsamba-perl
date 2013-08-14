@@ -4,3 +4,4 @@ Smb *           T_PTROBJ
 Descriptor *    T_PTROBJ
 uint16_t        T_UV
 uint32_t        T_UV
+off_t           T_IV
