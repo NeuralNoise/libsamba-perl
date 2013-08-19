@@ -42,18 +42,34 @@ struct resolve_context;
 struct resolve_context *lpcfg_resolve_context(struct loadparm_context *lp_ctx);
 
 struct file_entry {
-        bool is_directory;
-        const char *rel_path;
-};
-struct file_list {
-        uint32_t num_files;
-        struct file_entry *files;
+    const char *name;
+    uint64_t size;
+    uint16_t attrib;
+    time_t mtime;
+    bool is_directory;
 };
 
+struct file_list {
+    uint32_t num_files;
+    struct file_entry *files;
+};
+
+struct list_state {
+    struct smbcli_tree *tree;
+    uint8_t depth;
+    uint8_t max_depth;
+
+    const char *cur_base_dir;
+    const char *mask;
+    uint16_t attributes;
+
+    struct file_list list;
+};
+
+static NTSTATUS do_list(const char *, struct list_state *);
 static void list_fn(struct clilist_file_info *finfo, const char *name, void *state_ptr)
 {
-    struct file_list *state = state_ptr;
-    const char *rel_path;
+    struct list_state *state = state_ptr;
 
     /* Ignore . and .. directory entries */
     if (strcmp(finfo->name, ".") == 0 || strcmp(finfo->name, "..") == 0) {
@@ -66,29 +82,62 @@ static void list_fn(struct clilist_file_info *finfo, const char *name, void *sta
             return;
     }
 
-    rel_path = talloc_asprintf(state, "%s", finfo->name);
-    if (rel_path == NULL) return;
-
     /* Append entry to file list */
-    state->files = talloc_realloc(state, state->files,
-                    struct file_entry,
-                    state->num_files + 1);
-    if (state->files == NULL) return;
+    state->list.files = talloc_realloc(state, state->list.files,
+            struct file_entry, state->list.num_files + 1);
+    if (state->list.files == NULL) return;
 
-     state->files[state->num_files].rel_path = rel_path;
+    state->list.files[state->list.num_files].name =
+        talloc_asprintf(state, "%s/%s", state->cur_base_dir, finfo->name);
+    state->list.files[state->list.num_files].size = finfo->size;
+    state->list.files[state->list.num_files].attrib = finfo->attrib;
+    state->list.files[state->list.num_files].mtime = finfo->mtime;
 
-     /* Directory */
-     if (finfo->attrib & FILE_ATTRIBUTE_DIRECTORY) {
-             state->files[state->num_files].is_directory = true;
-             state->num_files++;
-             return;
-     }
+    if (finfo->attrib & FILE_ATTRIBUTE_DIRECTORY) {
+        state->list.files[state->list.num_files].is_directory = true;
+        state->list.num_files++;
 
-     state->files[state->num_files].is_directory = false;
-     state->num_files++;
+        if (state->depth < state->max_depth) {
+            char *base_dir = talloc_asprintf(state, "%s/%s", state->cur_base_dir, finfo->name);
+            do_list(base_dir, state);
+        }
+        return;
+    }
 
-     return;
+    state->list.files[state->list.num_files].is_directory = false;
+    state->list.num_files++;
+
+    return;
 }
+
+static NTSTATUS do_list(const char *base_dir, struct list_state *state)
+{
+    int rv;
+    char *mask;
+    const char *old_base_dir;
+
+    /* Update the relative paths, while buffering the parent */
+    old_base_dir = state->cur_base_dir;
+    state->cur_base_dir = base_dir;
+    state->depth++;
+
+    /* Get the current mask */
+    mask = talloc_asprintf(state, "%s/%s", base_dir, state->mask);
+    NT_STATUS_HAVE_NO_MEMORY(mask);
+    rv = smbcli_list(state->tree, mask, state->attributes, list_fn, state);
+    talloc_free(mask);
+
+    /* Go back to the state of the parent */
+    state->cur_base_dir = old_base_dir;
+    state->depth--;
+
+    if (rv == -1)
+        return NT_STATUS_UNSUCCESSFUL;
+
+    return NT_STATUS_OK;
+}
+
+
 
 void call_method_sv(SV * obj, char * method)
 {
@@ -609,36 +658,66 @@ getattr(self, fnum)
     RETVAL
 
 SV *
-list(self, mask, attributes)
+list(self, base_dir, user_mask = NULL, attributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_ARCHIVE, recursive = false)
     SV * self
-    const char *mask
+    const char *base_dir
+    const char *user_mask
     uint16_t attributes
+    bool recursive
     PREINIT:
     SmbCtx *ctx;
     NTSTATUS status;
-    struct file_list *state;
-    int rv, i;
+    struct list_state *state;
+    int i;
     AV *ret;
+    char *mask;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
-    state = talloc_zero(ctx->mem_ctx, struct file_list);
+    state = talloc_zero(ctx->mem_ctx, struct list_state);
     ret = (AV *) sv_2mortal ((SV *) newAV ());
     CODE:
+    if (state == NULL) {
+        croak("No memory");
+    }
+
     if (ctx->tree == NULL) {
         talloc_free(state);
         croak("Not connected");
     }
-    rv = smbcli_list(ctx->tree, mask, attributes, list_fn, state);
-    if (rv == -1) {
-        talloc_free(state);
-        croak("Failed to list directory: %s", smbcli_errstr(ctx->tree));
+
+    state->tree = ctx->tree;
+    state->attributes = attributes;
+    if (user_mask == NULL) {
+        state->mask = talloc_asprintf(state, "*");
+    } else {
+        state->mask = talloc_asprintf(state, "%s", user_mask);
     }
-    for (i = 0; i < state->num_files; i++) {
-        const char *fname = state->files[i].rel_path;
-        bool dir = state->files[i].is_directory;
+
+    if (recursive) {
+        state->max_depth = UCHAR_MAX;
+    } else {
+        state->max_depth = 1;
+    }
+
+    status = do_list(base_dir, state);
+    if (NT_STATUS_IS_ERR(status)) {
+        talloc_free(state);
+        croak("Failed to list directory '%s': %s", mask,
+                smbcli_errstr(ctx->tree));
+    }
+
+    for (i = 0; i < state->list.num_files; i++) {
+        const char *fname = state->list.files[i].name;
+        bool dir = state->list.files[i].is_directory;
+        uint64_t size = state->list.files[i].size;
+        uint16_t attrs = state->list.files[i].attrib;
+        time_t mtime = state->list.files[i].mtime;
 
         HV *rh = (HV *) sv_2mortal ((SV *) newHV ());
         hv_store(rh, "name", 4, newSVpv(fname, strlen(fname)), 0);
+        hv_store(rh, "size", 4, newSVuv(size), 0);
+        hv_store(rh, "attributes", 10, newSVuv(attrs), 0);
+        hv_store(rh, "mtime", 5, newSVuv(mtime), 0);
         hv_store(rh, "is_directory", 12, newSViv(dir), 0);
         av_push(ret, newRV((SV *)rh));
     }
