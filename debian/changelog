@@ -1,3 +1,11 @@
+libsamba-perl (0.04) precise; urgency=low
+
+  * Check Samba::Credentials constructor parameters
+  * Improve Samba::Smb::chkpath return codes check
+  * Add more parameters to Samba::Smb::list function
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Mon, 19 Aug 2013 17:17:05 +0200
+
 libsamba-perl (0.03) precise; urgency=low
 
   * Fix smb chkpath function return code on files
