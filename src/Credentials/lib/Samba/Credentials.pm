@@ -73,6 +73,10 @@ sub new
     my $class = shift;
     my $lp = shift;
 
+    unless (defined $lp and $lp->isa('Samba::LoadParm')) {
+        die "Missing constructor argument 'Samba::LoadParm'";
+    }
+
     my $self = {};
     bless ($self, $class);
 
