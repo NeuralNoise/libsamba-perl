@@ -256,10 +256,14 @@ chkpath(self, path)
         croak("Not connected");
     }
     status = smbcli_chkpath(ctx->tree, path);
-    if (NT_STATUS_IS_OK(status) || status == NT_STATUS_NOT_A_DIRECTORY) {
+    if (NT_STATUS_IS_OK(status)) {
         RETVAL = 1;
-    } else {
+    } else if (NT_STATUS_EQUAL(status, NT_STATUS_NOT_A_DIRECTORY)) {
+        RETVAL = 1;
+    } else if (NT_STATUS_EQUAL(status, NT_STATUS_OBJECT_NAME_NOT_FOUND)) {
         RETVAL = 0;
+    } else {
+        croak("Failed to check path '%s': %s", path, nt_errstr(status));
     }
     OUTPUT:
     RETVAL
