@@ -256,7 +256,7 @@ chkpath(self, path)
         croak("Not connected");
     }
     status = smbcli_chkpath(ctx->tree, path);
-    if (NT_STATUS_IS_OK(status)) {
+    if (NT_STATUS_IS_OK(status) || status == NT_STATUS_NOT_A_DIRECTORY) {
         RETVAL = 1;
     } else {
         RETVAL = 0;

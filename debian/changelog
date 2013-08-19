@@ -1,3 +1,9 @@
+libsamba-perl (0.03) precise; urgency=low
+
+  * Fix smb chkpath function return code on files
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Mon, 19 Aug 2013 10:38:31 +0200
+
 libsamba-perl (0.02) precise; urgency=low
 
   * Add read function to Samba::Smb
