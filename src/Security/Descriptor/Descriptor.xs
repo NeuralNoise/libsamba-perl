@@ -413,7 +413,7 @@ type(self, type = NO_INIT)
     OUTPUT:
     RETVAL
 
-const char *
+SV *
 dump(self)
     SV *self
     PREINIT:
@@ -421,14 +421,58 @@ dump(self)
     char *str;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
-    CODE:
+    PPCODE:
     str = ndr_print_struct_string(ctx->mem_ctx,
             (ndr_print_fn_t)ndr_print_security_descriptor,
             "security_descriptor", ctx->sd);
-    RETVAL = str;
+    XPUSHs(sv_2mortal(newSVpv(str, strlen(str))));
     talloc_free(str);
-    OUTPUT:
-    RETVAL
+
+SV *
+owner(self, owner_sid_str = NO_INIT)
+    SV *self
+    char *owner_sid_str
+    PREINIT:
+    DescriptorCtx *ctx;
+    struct dom_sid *owner_sid;
+    char *ret;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    PPCODE:
+    if (items > 1) {
+        owner_sid = dom_sid_parse_talloc(ctx->sd, owner_sid_str);
+        if (owner_sid == NULL) {
+            croak("Cannot parse SID string '%s'", owner_sid_str);
+        }
+        talloc_free(ctx->sd->owner_sid);
+        ctx->sd->owner_sid = owner_sid;
+    }
+    ret = dom_sid_string(ctx->mem_ctx, ctx->sd->owner_sid);
+    XPUSHs(sv_2mortal(newSVpv(ret, strlen(ret))));
+    talloc_free(ret);
+
+SV *
+group(self, group_sid_str = NO_INIT)
+    SV *self
+    char *group_sid_str
+    PREINIT:
+    DescriptorCtx *ctx;
+    struct dom_sid *group_sid;
+    char *ret;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    PPCODE:
+    if (items > 1) {
+        group_sid = dom_sid_parse_talloc(ctx->sd, group_sid_str);
+        if (group_sid == NULL) {
+            croak("Cannot parse SID string '%s'", group_sid_str);
+        }
+        talloc_free(ctx->sd->group_sid);
+        ctx->sd->group_sid = group_sid;
+    }
+    ret = dom_sid_string(ctx->mem_ctx, ctx->sd->group_sid);
+    XPUSHs(sv_2mortal(newSVpv(ret, strlen(ret))));
+    talloc_free(ret);
 
 void
 DESTROY(self)

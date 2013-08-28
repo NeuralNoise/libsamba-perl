@@ -1,3 +1,11 @@
+libsamba-perl (0.05) precise; urgency=low
+
+  * Add owner and group functions to Samba::Security::Descriptor
+  * Fix dump function output
+  * Fix Samba::Smb tests
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Wed, 28 Aug 2013 14:07:52 +0200
+
 libsamba-perl (0.04) precise; urgency=low
 
   * Check Samba::Credentials constructor parameters

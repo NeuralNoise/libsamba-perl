@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 3;
+use Test::More tests => 5;
 BEGIN { use_ok('Samba::Security::Descriptor') };
 
 
@@ -124,3 +124,12 @@ ok( $fail == 0 , 'Constants' );
 
 my $sd = new Samba::Security::Descriptor();
 isa_ok($sd, "Samba::Security::Descriptor");
+
+my $sid = 'S-1-5-21-3292774351-1174609048-3382345406-500';
+$sd->owner($sid);
+my $owner = $sd->owner();
+ok($owner eq $sid, "Set owner SID");
+
+$sd->group($sid);
+my $group = $sd->group();
+ok($group eq $sid, "Set group SID");
