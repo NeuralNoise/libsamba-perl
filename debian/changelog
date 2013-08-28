@@ -1,3 +1,9 @@
+libsamba-perl (0.06) precise; urgency=low
+
+  * Fix bug adding ACEs to security descriptor SACL and DACL
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Wed, 28 Aug 2013 18:30:31 +0200
+
 libsamba-perl (0.05) precise; urgency=low
 
   * Add owner and group functions to Samba::Security::Descriptor

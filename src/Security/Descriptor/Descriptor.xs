@@ -324,7 +324,7 @@ sacl_add(self, ace)
     if (new_ace == NULL) {
         croak("No memory");
     }
-    sec_ace_copy(new_ace, ace_ctx->ace);
+    sec_ace_copy(new_ace, &ace_ctx->ace);
 
     status = security_descriptor_sacl_add(ctx->sd, new_ace);
     if (NT_STATUS_IS_ERR(status)) {
@@ -384,7 +384,7 @@ dacl_add(self, ace)
     if (new_ace == NULL) {
         croak("No memory");
     }
-    sec_ace_copy(new_ace, ace_ctx->ace);
+    sec_ace_copy(new_ace, &ace_ctx->ace);
 
     status = security_descriptor_dacl_add(ctx->sd, new_ace);
     if (NT_STATUS_IS_ERR(status)) {
