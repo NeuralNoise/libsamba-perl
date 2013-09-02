@@ -659,7 +659,7 @@ getattr(self, fnum)
 
 # Must have bits in attibutes must be shifted 8 bits to left, see source4/torture/basic/dir.c
 SV *
-list(self, base_dir, user_mask = NULL, attributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_ARCHIVE, recursive = false)
+_list(self, base_dir, user_mask = NULL, attributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_ARCHIVE, recursive = false)
     SV * self
     const char *base_dir
     const char *user_mask

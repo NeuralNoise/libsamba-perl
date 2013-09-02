@@ -122,6 +122,39 @@ sub new
     return $self;
 }
 
+sub list
+{
+    my ($self, $base, %opt_args) = @_;
+
+    my $mask = '*';
+
+    my ($error1, $val1) = constant('FILE_ATTRIBUTE_SYSTEM');
+    croak ($error1) if $error1;
+    my ($error2, $val2) = constant('FILE_ATTRIBUTE_DIRECTORY');
+    croak ($error2) if $error2;
+    my ($error3, $val3) = constant('FILE_ATTRIBUTE_ARCHIVE');
+    croak ($error3) if $error3;
+
+    my $attrs = ($val1 | $val2 | $val3);
+    my $recursive = 0;
+
+    unless (defined $base and length $base) {
+        croak "Base directory not defined.";
+    }
+
+    if (exists $opt_args{mask}) {
+        $mask = delete $opt_args{mask};
+    }
+    if (exists $opt_args{attributes}) {
+        $attrs = delete $opt_args{attributes};
+    }
+    if (exists $opt_args{recursive}) {
+        $recursive = delete $opt_args{recursive};
+    }
+
+    return $self->_list($base, $mask, $attrs, $recursive);
+}
+
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
 1;

@@ -75,7 +75,8 @@ ok($smb->connect($target, $service) == 1, "connect");
 
 my $listAttributes = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_HIDDEN |
                      FILE_ATTRIBUTE_DIRECTORY;
-my $list = $smb->list("/", "*", $listAttributes);
+my $list = $smb->list("/", mask => "*", attributes => $listAttributes,
+                      recursive => 0);
 ok(defined $list, "list");
 
 my $fd = $smb->open("/kernevil.lan/Policies/{6AC1786C-016F-11D2-945F-00C04FB984F9}/GPT.INI", O_RDONLY, DENY_NONE);
