@@ -1,3 +1,10 @@
+libsamba-perl (0.08) precise; urgency=low
+
+  * Build with pkg-config flags
+  * Fix all compiler warnings
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Tue, 17 Sep 2013 04:00:18 +0200
+
 libsamba-perl (0.07) precise; urgency=low
 
   * Add wrapper for Samba::Smb list

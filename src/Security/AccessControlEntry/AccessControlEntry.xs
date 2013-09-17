@@ -28,8 +28,10 @@
 
 #include <gen_ndr/security.h>
 #include <security/secace.h>
+#include <security/dom_sid.h>
 
 MODULE = Samba::Security::AccessControlEntry PACKAGE = Samba::Security::AccessControlEntry
+PROTOTYPES: ENABLE
 
 void
 init(self, sid_str, type, mask, flags)

@@ -29,6 +29,8 @@
 #include <gen_ndr/security.h>
 #include <security/security_descriptor.h>
 #include <security/sddl.h>
+#include <security/secdesc.h>
+#include <security/secace.h>
 #include <security/dom_sid.h>
 #include <ndr.h>
 #include <gen_ndr/ndr_security.h>

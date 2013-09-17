@@ -15,5 +15,6 @@ WriteMakefile(
             'src/Credentials',
             'src/Smb',
             'src/Security/Descriptor',
-            'src/Security/AccessControlEntry'],
+            'src/Security/AccessControlEntry',
+           ],
 );

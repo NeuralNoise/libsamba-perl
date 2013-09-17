@@ -1,7 +1,18 @@
 use 5.014002;
 use ExtUtils::MakeMaker;
+use Config;
 
 our $samba_prefix;
+
+my $pkg_config_cflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc samba-hostconfig samba-credentials gensec --cflags`;
+my $pkg_config_ldflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc samba-hostconfig samba-credentials gensec --libs`;
+chomp $pkg_config_cflags;
+chomp $pkg_config_ldflags;
+
+my $ccflags = $Config{ccflags};
+$ccflags .= " $pkg_config_ldflags $pkg_config_cflags -Wimplicit-function-declaration";
+
+my $ldflags = " $pkg_config_ldflags";
 
 WriteMakefile(
     NAME              => 'Samba::Credentials',
@@ -10,7 +21,8 @@ WriteMakefile(
     ABSTRACT_FROM     => 'lib/Samba/Credentials.pm',
     AUTHOR            => 'Samuel Cabrero <scabrero@zentyal.com>',
     PREREQ_PM         => {},
-    LIBS              => ["-L$samba_prefix/lib -ltalloc -lsamba-hostconfig -lsamba-credentials -lgensec"],
+    CCFLAGS           => $ccflags,
+    LIBS              => ["-L$samba_prefix/lib $ldflags"],
     DEFINE            => '',
     INC               => "-I../../include -I. -I$samba_prefix/include -I/usr/lib/perl5/XS/Object/Magic/Install",
     OBJECT            => 'Credentials.o',

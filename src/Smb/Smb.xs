@@ -15,19 +15,23 @@
  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#define TEVENT_DEPRECATED 1
+
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
 #include <xs_object_magic.h>
 
+
 #include "ppport.h"
+
+#include <stdbool.h>
 
 #include <Samba-LoadParm.h>
 #include <Samba-Credentials.h>
 #include <Samba-Descriptor.h>
 #include <Samba-Smb.h>
 
-#include <stdbool.h>
 #include <util/time.h>
 #include <util/data_blob.h>
 #include <util/memory.h>
@@ -35,6 +39,8 @@
 #include <smb_cli.h>
 #include <smb_cliraw.h>
 #include <gen_ndr/security.h>
+#include <tevent.h>
+#include <gensec.h>
 
 #include "const-c.inc"
 
@@ -219,15 +225,16 @@ connect(self, hostname, service)
     SmbCtx *ctx;
     struct smbcli_options options;
     struct smbcli_session_options session_options;
+    struct smbcli_state *smb_state;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     CODE:
     lpcfg_smbcli_options(ctx->lp_ctx, &options);
     lpcfg_smbcli_session_options(ctx->lp_ctx, &session_options);
 
-    status = smbcli_tree_full_connection(
+    status = smbcli_full_connection(
                 ctx->mem_ctx,
-                &ctx->tree,
+                &smb_state,
                 hostname,
                 lpcfg_smb_ports(ctx->lp_ctx),
                 service,
@@ -240,8 +247,9 @@ connect(self, hostname, service)
                 &session_options,
                 lpcfg_gensec_settings(ctx->mem_ctx, ctx->lp_ctx));
     if (!NT_STATUS_IS_OK(status)) {
-        croak(nt_errstr(status));
+        croak("Failed to connect: %s", nt_errstr(status));
     }
+    ctx->tree = smb_state->tree;
     RETVAL = 1;
     OUTPUT:
     RETVAL
@@ -354,7 +362,7 @@ rmdir(self, dname)
     }
     status = smbcli_rmdir(ctx->tree, dname);
     if (NT_STATUS_IS_ERR(status)) {
-        croak("Failed to rmdir %d: %s (%s)", dname, nt_errstr(status),
+        croak("Failed to rmdir %s: %s (%s)", dname, nt_errstr(status),
             smbcli_errstr(ctx->tree));
     }
     RETVAL = 1;
@@ -522,11 +530,12 @@ set_sd(self, fname, sd, sinfo = (SECINFO_OWNER | SECINFO_GROUP | SECINFO_DACL | 
 
     /* Set security descriptor */
     ZERO_STRUCT(io_finfo);
+    io_finfo.generic.level = RAW_SFILEINFO_SEC_DESC;
     io_finfo.set_secdesc.level = RAW_SFILEINFO_SEC_DESC;
     io_finfo.set_secdesc.in.file.fnum = fnum;
     io_finfo.set_secdesc.in.sd = sd_ctx->sd;
     io_finfo.set_secdesc.in.secinfo_flags = sinfo;
-    status = smb_raw_set_secdesc(ctx->tree, &io_finfo);
+    status = smb_raw_setfileinfo(ctx->tree, &io_finfo);
     if (!NT_STATUS_IS_OK(status)) {
         croak("Failed to set security descriptor: %s", nt_errstr(status));
     }
@@ -591,10 +600,11 @@ get_sd(self, fname, sinfo = (SECINFO_OWNER | SECINFO_GROUP | SECINFO_DACL | SECI
 
     /* Get security descriptor */
     ZERO_STRUCT(fio);
+    fio.generic.level = RAW_FILEINFO_SEC_DESC;
     fio.query_secdesc.level = RAW_FILEINFO_SEC_DESC;
     fio.query_secdesc.in.file.fnum = fnum;
     fio.query_secdesc.in.secinfo_flags = sinfo;
-    status = smb_raw_query_secdesc(ctx->tree, ctx->mem_ctx, &fio);
+    status = smb_raw_fileinfo(ctx->tree, ctx->mem_ctx, &fio);
     if (NT_STATUS_IS_ERR(status)) {
         croak("Failed to query security descriptor: %s", nt_errstr(status));
     }
@@ -635,7 +645,7 @@ getattr(self, fnum)
     HV *ret;
     uint16_t mode;
     time_t change_time, access_time, write_time;
-    off_t size;
+    size_t size;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     ret = (HV *) sv_2mortal ((SV *) newHV ());
