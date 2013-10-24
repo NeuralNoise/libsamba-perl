@@ -681,7 +681,6 @@ _list(self, base_dir, user_mask = NULL, attributes = FILE_ATTRIBUTE_SYSTEM | FIL
     struct list_state *state;
     int i;
     AV *ret;
-    char *mask;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
     state = talloc_zero(ctx->mem_ctx, struct list_state);
@@ -698,6 +697,7 @@ _list(self, base_dir, user_mask = NULL, attributes = FILE_ATTRIBUTE_SYSTEM | FIL
 
     state->tree = ctx->tree;
     state->attributes = attributes;
+    state->cur_base_dir = talloc_strdup(state, base_dir);
     if (user_mask == NULL) {
         state->mask = talloc_asprintf(state, "*");
     } else {
@@ -710,10 +710,10 @@ _list(self, base_dir, user_mask = NULL, attributes = FILE_ATTRIBUTE_SYSTEM | FIL
         state->max_depth = 1;
     }
 
-    status = do_list(base_dir, state);
+    status = do_list(state->cur_base_dir, state);
     if (NT_STATUS_IS_ERR(status)) {
         talloc_free(state);
-        croak("Failed to list directory '%s': %s", mask,
+        croak("Failed to list directory '%s': %s", state->cur_base_dir,
                 smbcli_errstr(ctx->tree));
     }
 

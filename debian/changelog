@@ -1,3 +1,9 @@
+libsamba-perl (0.09) UNRELEASED; urgency=low
+
+  * Fix error message listing directories
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Thu, 24 Oct 2013 14:24:19 +0200
+
 libsamba-perl (0.08) precise; urgency=low
 
   * Build with pkg-config flags
