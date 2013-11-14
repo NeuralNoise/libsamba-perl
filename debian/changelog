@@ -1,8 +1,9 @@
 libsamba-perl (0.09) UNRELEASED; urgency=low
 
   * Fix error message listing directories
+  * Do not croak in chkpath function
 
- -- Samuel Cabrero <scabrero@zentyal.com>  Thu, 24 Oct 2013 14:24:19 +0200
+ -- Samuel Cabrero <scabrero@zentyal.com>  Thu, 14 Nov 2013 15:33:42 +0100
 
 libsamba-perl (0.08) precise; urgency=low
 
