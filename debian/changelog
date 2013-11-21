@@ -1,3 +1,9 @@
+libsamba-perl (0.10) UNRELEASED; urgency=low
+
+  * Add function case_sensitive to Samba::Smb
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Wed, 20 Nov 2013 16:40:03 +0100
+
 libsamba-perl (0.09) precise; urgency=low
 
   * Fix error message listing directories

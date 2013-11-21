@@ -254,6 +254,27 @@ connect(self, hostname, service)
     OUTPUT:
     RETVAL
 
+bool
+case_sensitive(self, case_sensitive)
+    SV *self
+    bool case_sensitive
+    PREINIT:
+    NTSTATUS status;
+    SmbCtx *ctx;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
+    status = smbcli_set_case_sensitive(ctx->tree, case_sensitive);
+    if (!NT_STATUS_IS_OK(status)) {
+        croak("Failed to setup case sensitive flag: %s", nt_errstr(status));
+    }
+    RETVAL = 1;
+    OUTPUT:
+    RETVAL
+
 int
 open(self, fname, flags, share_mode)
     SV *self
