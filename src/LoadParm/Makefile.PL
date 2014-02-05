@@ -26,7 +26,7 @@ WriteMakefile(
     CCFLAGS           => $ccflags,
     LIBS              => ["-L$samba_prefix/lib $ldflags"],
     DEFINE            => '',
-    INC               => "-I../../include -I. -I$samba_prefix/include -I/usr/lib/perl5/XS/Object/Magic/Install",
+    INC               => "-I../../include -I. -I$samba_prefix/include/samba-4.0 -I/usr/lib/perl5/XS/Object/Magic/Install",
     OBJECT            => 'LoadParm.o',
     INST_LIB          => '../../blib/lib',
     INST_ARCHLIB      => '../../blib/arch',

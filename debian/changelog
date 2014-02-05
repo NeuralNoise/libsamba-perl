@@ -1,3 +1,9 @@
+libsamba-perl (0.10-1) saucy; urgency=low
+
+  * Set include paths for new samba-dev package
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Wed, 05 Feb 2014 19:00:16 +0100
+
 libsamba-perl (0.10) saucy; urgency=low
 
   * Rebuild for saucy
