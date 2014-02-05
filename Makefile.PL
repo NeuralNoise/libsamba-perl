@@ -6,7 +6,7 @@ use warnings;
 use ExtUtils::MakeMaker;
 use Getopt::Long qw(GetOptions);
 
-our $samba_prefix = '/opt/samba4';
+our $samba_prefix = '/usr';
 GetOptions('samba-prefix=s' => \$samba_prefix);
 
 WriteMakefile(
