@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Samuel Cabrero <scabrero@zentyal.com>
 Build-Depends: debhelper (>= 8),
  perl, pkg-config, libxs-object-magic-perl, libbsd0,
- samba-dev (>= 2:4.1.4+dfsg-2~), libtevent-dev, libtmalloc-dev
+ samba-dev (>= 2:4.1.4+dfsg-2~), libtevent-dev, libtalloc-dev
 Standards-Version: 3.9.3
 Homepage: http://www.zentyal.org
 
