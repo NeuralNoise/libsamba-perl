@@ -12,9 +12,7 @@ chomp $pkg_config_ldflags;
 my $ccflags = $Config{ccflags};
 $ccflags .= " $pkg_config_ldflags $pkg_config_cflags -Wimplicit-function-declaration";
 
-my $ldflags = $pkg_config_ldflags;
-print "$ldflags\n\n\n";
-
+my $ldflags = " $pkg_config_ldflags";
 
 WriteMakefile(
     NAME              => 'Samba::LoadParm',

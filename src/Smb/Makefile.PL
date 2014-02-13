@@ -1,10 +1,11 @@
 use 5.014002;
 use ExtUtils::MakeMaker;
+use Config;
 
 our $samba_prefix;
 
-my $pkg_config_cflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc errors smbclient-raw --cflags`;
-my $pkg_config_ldflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc errors smbclient-raw --libs`;
+my $pkg_config_cflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc samba-errors smbclient-raw --cflags`;
+my $pkg_config_ldflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc samba-errors smbclient-raw --libs`;
 chomp $pkg_config_cflags;
 chomp $pkg_config_ldflags;
 
@@ -23,7 +24,7 @@ WriteMakefile(
     CCFLAGS           => $ccflags,
     LIBS              => ["-L$samba_prefix/lib $ldflags"],
     DEFINE            => '',
-    INC               => "-I../../include -I$samba_prefix/include/samba-4.0 -I. -I/usr/lib/perl5/XS/Object/Magic/Install",
+    INC               => "-I../../include -I. -I$samba_prefix/include/samba-4.0 -I/usr/lib/perl5/XS/Object/Magic/Install",
     OBJECT            => 'Smb.o',
     INST_LIB          => '../../blib/lib',
     INST_ARCHLIB      => '../../blib/arch',

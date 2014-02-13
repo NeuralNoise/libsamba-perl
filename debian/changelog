@@ -1,3 +1,9 @@
+libsamba-perl (0.10-2) saucy; urgency=low
+
+  * Link against correct errors library, samba-errors
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Thu, 13 Feb 2014 14:44:47 +0100
+
 libsamba-perl (0.10-1) saucy; urgency=low
 
   * Set include paths for new samba-dev package
