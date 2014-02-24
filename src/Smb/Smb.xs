@@ -276,24 +276,81 @@ case_sensitive(self, case_sensitive)
     RETVAL
 
 int
-open(self, fname, flags, share_mode)
+open(self, fname, args = NO_INIT)
     SV *self
     const char *fname
-    int flags
-    int share_mode
+    HV *args
     PREINIT:
     SmbCtx *ctx;
     int fnum;
+    union smb_open io_open;
+    uint32_t access_mask;
+    uint32_t create_options;
+    uint32_t file_attr;
+    uint32_t share_access;
+    uint32_t open_disposition;
+    SV **val;
+    NTSTATUS status;
     INIT:
     ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    access_mask = SEC_RIGHTS_FILE_ALL;
+    create_options = NTCREATEX_OPTIONS_NON_DIRECTORY_FILE;
+    file_attr = FILE_ATTRIBUTE_NORMAL;
+    share_access = NTCREATEX_SHARE_ACCESS_READ | NTCREATEX_SHARE_ACCESS_WRITE;
+    open_disposition = NTCREATEX_DISP_OPEN_IF;
     CODE:
     if (ctx->tree == NULL) {
         croak("Not connected");
     }
-    fnum = smbcli_open(ctx->tree, fname, flags, share_mode);
+
+    if (items > 2 && args) {
+        if (hv_exists(args, "access_mask", 11)) {
+            val = hv_fetch(args, "access_mask", 11, 0);
+            access_mask = SvUV(*val);
+        }
+        if (hv_exists(args, "create_options", 14)) {
+            val = hv_fetch(args, "create_options", 14, 0);
+            create_options = SvUV(*val);
+        }
+        if (hv_exists(args, "file_attr", 9)) {
+            val = hv_fetch(args, "file_attr", 9, 0);
+            file_attr = SvUV(*val);
+        }
+        if (hv_exists(args, "share_access", 12)) {
+            val = hv_fetch(args, "share_access", 12, 0);
+            share_access = SvUV(*val);
+        }
+        if (hv_exists(args, "open_disposition", 16)) {
+            val = hv_fetch(args, "open_disposition", 16, 0);
+            open_disposition = SvUV(*val);
+        }
+    }
+
+    ZERO_STRUCT(io_open);
+    /* [MS-CIFS] Section 2.2.4.64 */
+    io_open.generic.level = RAW_OPEN_NTCREATEX;
+    io_open.ntcreatex.in.root_fid.fnum = 0;
+    io_open.ntcreatex.in.flags = 0;
+    io_open.ntcreatex.in.access_mask = access_mask;
+    io_open.ntcreatex.in.create_options = create_options;
+    io_open.ntcreatex.in.file_attr = file_attr;
+    io_open.ntcreatex.in.share_access = share_access;
+    io_open.ntcreatex.in.alloc_size = 0;
+    io_open.ntcreatex.in.open_disposition = open_disposition;
+    io_open.ntcreatex.in.impersonation = NTCREATEX_IMPERSONATION_ANONYMOUS;
+    io_open.ntcreatex.in.security_flags = 0;
+    io_open.ntcreatex.in.fname = fname;
+
+    status = smb_raw_open(ctx->tree, ctx->mem_ctx, &io_open);
+    if (!NT_STATUS_IS_OK(status)) {
+        croak("Failed to open: %s", nt_errstr(status));
+    }
+
+    fnum = io_open.ntcreatex.out.file.fnum;
     if (fnum == -1) {
         croak("Failed to open %s: %s", fname, smbcli_errstr(ctx->tree));
     }
+
     RETVAL = fnum;
 OUTPUT:
     RETVAL
@@ -655,7 +712,7 @@ get_sd(self, fname, sinfo = (SECINFO_OWNER | SECINFO_GROUP | SECINFO_DACL | SECI
     RETVAL
 
 SV *
-getattr(self, fnum)
+getattrE(self, fnum)
     SV *self
     int fnum
     PREINIT:
@@ -682,6 +739,35 @@ getattr(self, fnum)
     hv_store(ret, "change_time", 11, newSVuv(change_time), 0);
     hv_store(ret, "access_time", 11, newSVuv(access_time), 0);
     hv_store(ret, "write_time", 10, newSVuv(write_time), 0);
+    RETVAL = newRV((SV *)ret);
+    OUTPUT:
+    RETVAL
+
+SV *
+getattr(self, fname)
+    SV *self
+    char *fname
+    PREINIT:
+    SmbCtx *ctx;
+    NTSTATUS status;
+    HV *ret;
+    uint16_t mode;
+    time_t time;
+    size_t size;
+    INIT:
+    ctx = xs_object_magic_get_struct_rv(aTHX_ self);
+    ret = (HV *) sv_2mortal ((SV *) newHV ());
+    CODE:
+    if (ctx->tree == NULL) {
+        croak("Not connected");
+    }
+    status = smbcli_getatr(ctx->tree, fname, &mode, &size, &time);
+    if (NT_STATUS_IS_ERR(status)) {
+        croak("Failed to get attributes: %s", smbcli_errstr(ctx->tree));
+    }
+    hv_store(ret, "mode", 4, newSVuv(mode), 0);
+    hv_store(ret, "size", 4, newSVuv(size), 0);
+    hv_store(ret, "time", 4, newSVuv(time), 0);
     RETVAL = newRV((SV *)ret);
     OUTPUT:
     RETVAL
