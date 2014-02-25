@@ -1,4 +1,4 @@
-libsamba-perl (0.11) UNRELEASED; urgency=low
+libsamba-perl (0.11) precise; urgency=low
 
   * open funtion:
     Do not use high level smbcli_open function. Samba server map it to
@@ -7,7 +7,7 @@ libsamba-perl (0.11) UNRELEASED; urgency=low
     Rename current getattr to getattrE, and define getattr to query
     attributes by path.
 
- -- Samuel Cabrero <scabrero@zentyal.com>  Tue, 25 Feb 2014 11:43:37 +0100
+ -- Samuel Cabrero <scabrero@zentyal.com>  Tue, 25 Feb 2014 13:44:22 +0100
 
 libsamba-perl (0.10) precise; urgency=low
 
