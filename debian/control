@@ -10,5 +10,19 @@ Homepage: http://www.zentyal.org
 
 Package: libsamba-perl
 Architecture: any
+Section: perl
+Priority: optional
 Depends: ${misc:Depends}, ${perl:Depends}, ${shlibs:Depends}
+Homepage: http://www.zentyal.org
 Description: Perl bindings for samba 4.0
+
+Package: libsamba-perl-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: libsamba-perl (= ${binary:Version}), ${misc:Depends}
+Homepage: http://www.zentyal.org
+Description: Perl bindings for samba 4.0
+ .
+ This package provides debugging information for the software. Install it to
+ get a better backtrace in the event of a crash.

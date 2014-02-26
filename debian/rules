@@ -1,6 +1,14 @@
 #!/usr/bin/make -f
 
+DESTDIR=$(CURDIR)/debian/libsamba-perl
+
 %:
 	dh $@
 
+override_dh_auto_install:
+	dh_auto_install --destdir=$(DESTDIR)
+
 override_dh_auto_test:
+
+override_dh_strip:
+	dh_strip --dbg-package=libsamba-perl-dbg
