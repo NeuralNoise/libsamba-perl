@@ -1,3 +1,9 @@
+libsamba-perl (0.11+2) trusty; urgency=low
+
+  * trusty build
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Fri, 28 Mar 2014 15:40:49 +0100
+
 libsamba-perl (0.11+1) saucy; urgency=low
 
   * New upstream release
