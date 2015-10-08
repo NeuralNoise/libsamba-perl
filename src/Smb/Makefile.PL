@@ -3,8 +3,8 @@ use ExtUtils::MakeMaker;
 
 our $samba_prefix;
 
-my $pkg_config_cflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc errors smbclient-raw --cflags`;
-my $pkg_config_ldflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc errors smbclient-raw --libs`;
+my $pkg_config_cflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc smbclient-raw --cflags`;
+my $pkg_config_ldflags = `PKG_CONFIG_PATH=$samba_prefix/lib/pkgconfig pkg-config talloc tevent samba-hostconfig samba-credentials gensec dcerpc smbclient-raw --libs`;
 chomp $pkg_config_cflags;
 chomp $pkg_config_ldflags;
 

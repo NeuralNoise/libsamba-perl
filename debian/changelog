@@ -1,3 +1,9 @@
+libsamba-perl (0.12) trusty; urgency=medium
+
+  * Adapt to Samba 4.3
+
+ -- Carlos Pérez-Aradros Herce <cperez@zentyal.com>  Thu, 08 Oct 2015 10:36:58 -0700
+
 libsamba-perl (0.11) precise; urgency=low
 
   * open funtion:
